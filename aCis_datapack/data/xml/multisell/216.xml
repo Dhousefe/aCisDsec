@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- B-Grade Jewels -->
+<list>
+  <!-- Necklace of Black Ore -->
+  <item id="1">
+    <ingredient id="57" count="3650000"/>
+    <production id="926" count="1"/>
+  </item>
+
+  <!-- Earring of Black Ore -->
+  <item id="2">
+    <ingredient id="57" count="3050000"/>
+    <production id="864" count="1"/>
+  </item>
+
+  <!-- Ring of Black Ore -->
+  <item id="3">
+    <ingredient id="57" count="2550000"/>
+    <production id="895" count="1"/>
+  </item>
+  
+   <!-- Adamantite Necklace -->
+  <item id="4">
+    <ingredient id="57" count="3150000"/>
+	<production id="918" count="1"/>
+  </item>
+
+  <!-- Earring Adamantite -->
+  <item id="5">
+    <ingredient id="57" count="2800000"/>
+    <production id="856" count="1"/>
+  </item>
+
+  <!-- Ring Adamantite -->
+  <item id="6">
+    <ingredient id="57" count="2550000"/>
+   <production id="887" count="1"/>
+  </item>
+  
+  <!-- Necklace of Aid -->
+  <item id="7">
+    <ingredient id="57" count="3150000"/>
+	<production id="935" count="1"/>
+  </item>
+
+  <!-- Earring of Aid -->
+  <item id="8">
+    <ingredient id="57" count="2800000"/>
+    <production id="873" count="1"/>
+  </item>
+
+  <!-- Ring of Aid -->
+  <item id="9">
+    <ingredient id="57" count="2150000"/>
+    <production id="904" count="1"/>
+  </item>
+
+  <!-- Necklace of Mana -->
+  <item id="10">
+    <ingredient id="57" count="3150000"/>
+	<production id="921" count="1"/>
+  </item>
+
+  <!-- Earring of Mana -->
+  <item id="11">
+    <ingredient id="57" count="2800000"/>
+    <production id="859" count="1"/>
+  </item>
+
+  <!-- Ring of of Mana -->
+  <item id="12">
+    <ingredient id="57" count="2150000"/>
+    <production id="117" count="1"/>
+  </item>
+  
+  <!-- Necklace of Summoning -->
+  <item id="13">
+    <ingredient id="57" count="3150000"/>
+	<production id="927" count="1"/>
+  </item>
+
+  <!-- Earring of Mana -->
+  <item id="14">
+    <ingredient id="57" count="2800000"/>
+    <production id="865" count="1"/>
+  </item>
+
+  <!-- Ring of of Mana -->
+  <item id="15">
+    <ingredient id="57" count="2150000"/>
+    <production id="896" count="1"/>
+  </item> 
+</list>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- B-Grade Jewels -->

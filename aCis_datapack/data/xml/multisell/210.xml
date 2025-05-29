@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- Grade NG Weapons -->
+<list>
+
+  <item id="1">
+    <production id="2" count="1"/>
+	<ingredient id="57" count="149600" />
+  </item>
+ 
+  <item id="2"> 
+    <production id="218" count="1"/>
+	<ingredient id="57" count="149600" />
+  </item>
+
+  <item id="3">  
+    <production id="272" count="1"/>
+	<ingredient id="57" count="149600" />
+  </item>
+  
+  <item id="4">  
+    <production id="15" count="1"/>
+	<ingredient id="57" count="149600" />
+  </item>
+  
+  <item id="5">  
+    <production id="68" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="6">  
+    <production id="219" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="7">  
+    <production id="273" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="8">    
+    <production id="155" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="9">  
+    <production id="87" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="10">   
+    <production id="16" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item>
+
+  <item id="11">   
+    <production id="5284" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item> 
+
+    <item id="12">   
+    <production id="256" count="1"/>
+	<ingredient id="57" count="149600" />
+  </item> 
+  
+  <item id="13">   
+    <production id="257" count="1"/>
+	<ingredient id="57" count="268400" />
+  </item> 
+  <item id="14"> 
+    <production id="176" count="1"/>
+  	<ingredient id="57" count="149600" />
+  </item>
+  
+  <item id="15">  
+    <production id="310" count="1"/>
+  	<ingredient id="57" count="149600" />
+  </item>
+  
+  <item id="16">  
+    <production id="177" count="1"/>
+  	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="17">  
+    <production id="311" count="1"/>
+  	<ingredient id="57" count="268400" />
+  </item>
+  
+  <item id="18">  
+    <production id="100" count="1"/>
+  	<ingredient id="57" count="268400" />
+  </item> 
+</list>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- Grade NG Weapons -->

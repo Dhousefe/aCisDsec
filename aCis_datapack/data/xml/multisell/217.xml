@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- C-Grade Jewels -->
+<list>
+	<!-- Blessed Necklace -->
+	<item id="1">
+		<ingredient id="1459" count="135" />
+		<ingredient id="1458" count="545" />
+		<production id="919" count="1"/>
+	</item>
+	<!-- Blessed of Earring -->
+	<item id="2">
+		<ingredient id="1459" count="104" />
+		<ingredient id="1458" count="430" />
+		<production id="888" count="1"/>
+	</item>
+	<!-- Blessed of Ring -->
+	<item id="3">
+		<ingredient id="1459" count="79" />
+		<ingredient id="1458" count="305" />
+		<production id="857" count="1"/>
+	</item>	
+	
+	
+	<!-- Necklace of Binding -->
+	<item id="4">
+		<ingredient id="1459" count="129" />
+		<ingredient id="1458" count="525" />
+		<production id="119" count="1"/>
+	</item>		
+	<!-- Necklace of Earring -->
+	<item id="5">
+		<ingredient id="1459" count="94" />
+		<ingredient id="1458" count="410" />
+		<production id="886" count="1"/>
+	</item>
+	<!-- Necklace of Ring -->	
+	<item id="5">
+		<ingredient id="1459" count="69" />
+		<ingredient id="1458" count="295" />
+		<production id="854" count="1"/>
+	</item>
+
+	
+	<!-- Necklace of Protection -->
+	<item id="6">
+		<ingredient id="1459" count="119" />
+		<ingredient id="1458" count="515" />
+		<production id="916" count="1"/>		
+	</item>	
+	<!-- Necklace of Earring -->
+	<item id="7">
+		<ingredient id="1459" count="84" />
+		<ingredient id="1458" count="400" />
+		<production id="884" count="1"/>
+	</item>
+	<!-- Necklace of Ring -->
+	<item id="8">
+		<ingredient id="1459" count="59" />
+		<ingredient id="1458" count="275" />
+		<production id="853" count="1"/>
+	</item>
+
+
+	<!-- Moonstone Earring -->
+	<item id="9">
+		<ingredient id="1459" count="39" />
+		<ingredient id="1458" count="195" />
+		<production id="852" count="1" />
+	</item>
+	<!-- Aquastone Ring -->
+	<item id="10">
+		<ingredient id="1459" count="26" />
+		<ingredient id="1458" count="130" />
+		<production id="883" count="1" />
+	</item>
+	<!-- Ring of Ages -->
+	<item id="11">
+		<ingredient id="1459" count="49" />
+		<ingredient id="1458" count="245" />
+		<production id="885" count="1" />
+	</item>
+	<!-- Aquastone Necklace -->
+	<item id="12">
+		<ingredient id="1459" count="52" />
+		<ingredient id="1458" count="260" />
+		<production id="915" count="1" />
+	</item>
+	<!-- Necklace of Mermaid -->
+	<item id="13">
+		<ingredient id="1459" count="99" />
+		<ingredient id="1458" count="495" />
+		<production id="917" count="1" />
+	</item>
+
+</list>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- C-Grade Jewels -->

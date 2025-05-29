@@ -1,0 +1,114 @@
+<html>
+<title>NPC Buffer</title>
+<body>
+<center>
+    <!-- Título decorativo -->
+    <table>
+        <tr>
+            <td><img src="L2ui.GM_icon_light" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_b_i00" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_u_i00" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_f_i00" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_f_i00" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_e_i00" width=32 height=32></td>
+            <td><img src="Icon.etc_alphabet_r_i00" width=32 height=32></td>
+            <td><img src="L2ui.GM_icon_light" width=32 height=32></td>
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <td align=center><img src="L2UI_CH3.herotower_deco" width=256 height=28></td>
+        </tr>
+    </table>
+    <br>
+    <font color="00BFFF">Escolha Seu:</font><font color="LEVEL"> Buff</font><br1>
+    <br>
+    <!-- Primeira linha de buffs -->
+    <table>
+        <tr>
+            <td><img src="icon.skill1040" width=32 height=32></td>
+            
+            <td>
+                <button value="Scheme Support" action="bypass -h npc_%objectId%_support player" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+            
+            
+            <td>
+                <button value="Heal | Noble" action="bypass -h npc_%objectId%_restore true" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+			
+			<td><img src="icon.skill1218" width=32 height=32></td>
+        </tr>
+    </table>
+    <br>
+    <!-- Linha de buffs por classe -->
+    <table>
+	<center>
+        <tr>
+            <td><img src="icon.skill1389" width=32 height=32></td>
+            <td><img src="L2UI_CH3.shortcut_prev_down" width=16 height=16></td>
+            <td>
+                <button value="Full Mage" action="bypass -h npc_%objectId%_bufflist mage" width=60 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+            <td><img src="L2UI_CH3.shortcut_next_down" width=16 height=16></td>
+            
+			<td><img src="L2UI_CH3.shortcut_prev_down" width=16 height=16></td>
+            <td>
+                <button value="Full Fighter" action="bypass -h npc_%objectId%_bufflist fighter" width=60 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+			<td><img src="L2UI_CH3.shortcut_next_down" width=16 height=16></td>
+			<td><img src="icon.skill1388" width=32 height=32></td>
+        </tr>
+	</center>
+    </table>
+    <br>
+    <!-- Linha de buffs específicos -->
+    <table>
+        <tr>
+            <td><img src="icon.skill1040" width=32 height=32></td>
+            <td>
+                <button value="Buffs" action="bypass -h npc_%objectId%_openlist player buffs" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+            
+            <td>
+                <button value="Chants" action="bypass -h npc_%objectId%_openlist player chants" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+			<td><img src="icon.skill1284" width=32 height=32></td>
+        </tr>
+        <tr>
+            <td><img src="icon.skill0271" width=32 height=32></td>
+            <td>
+                <button value="Dances" action="bypass -h npc_%objectId%_openlist player dances" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+            
+            <td>
+                <button value="Extra Buffs" action="bypass -h npc_%objectId%_openlist player resists" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+			<td><img src="icon.skill1331" width=32 height=32></td>
+        </tr>
+        <tr>
+            <td><img src="icon.skill0265" width=32 height=32></td>
+            <td>
+                <button value="Songs" action="bypass -h npc_%objectId%_openlist player songs" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+            
+            <td>
+                <button value="Prophecies" action="bypass -h npc_%objectId%_openlist player extra" width=105 height=30 back="L2UI_ch3.bigbutton2_down" fore="L2UI_ch3.bigbutton2">
+            </td>
+			<td><img src="icon.skill1355" width=32 height=32></td>
+        </tr>
+    </table>
+    <br>
+    <!-- Linha de limpeza de efeitos -->
+    <table>
+        <tr>
+            <td align=center>
+                <button value="Cleanup all effects" action="bypass -h npc_%objectId%_cancellation" width=200 height=13 back="L2butom.bitbuttom7_over" fore="L2butom.bitbuttom7">
+            </td>
+        </tr>
+    </table>
+    <br>
+    <img src="L2UI.SquareWhite" width=300 height=1>
+</center>
+</body>
+</html>

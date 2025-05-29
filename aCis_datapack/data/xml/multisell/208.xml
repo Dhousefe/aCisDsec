@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Created-->
+<!-- By RootZerO -->
+<!-- Grade B Weapons no SA -->
+<list>
+	<item id="61">
+		<production id="142" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="62">
+		<production id="78" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="63">
+		<production id="91" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="64">
+		<production id="243" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="65">
+		<production id="229" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="66">
+		<production id="267" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="67">
+		<production id="284" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />,
+	</item>
+	<item id="68">
+		<production id="300" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="69">
+		<production id="92" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="70">
+		<production id="148" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="71">
+		<production id="79" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="72">
+		<production id="171" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="73">
+		<production id="175" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="74">
+		<production id="234" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="75">
+		<production id="268" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="78">
+		<production id="287" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="79">
+		<production id="97" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="80">
+		<production id="210" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="86">
+		<production id="7883" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="89">
+		<production id="7889" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="91">
+		<production id="7892" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="92">
+		<production id="7893" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	<item id="95">
+		<production id="7900" count="1" />
+		<ingredient id="1460" count="573" /> <ingredient id="1459" count="2865" />
+	</item>
+	<item id="96">
+		<production id="7901" count="1" />
+		<ingredient id="1460" count="1075" /> <ingredient id="1459" count="5375" />
+	</item>
+	
+</list>
+<!-- Created-->
+<!-- By RootZerO -->

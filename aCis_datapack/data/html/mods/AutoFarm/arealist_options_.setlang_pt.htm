@@ -1,0 +1,64 @@
+<html>
+<body>
+<center>
+<title>L2Dsec</title>
+
+
+<br>
+<table cellspacing="-2">
+ <tr>
+ <td><button value="Aberto" action="bypass autofarm list_areas OPEN" width=74 height=24 back="L2UI_CH3.summon_tab2_over" fore="L2UI_CH3.summon_tab2"></td>
+ <td><button value="Zonas" action="bypass autofarm list_areas ZONA" width=74 height=24 back="L2UI_CH3.summon_tab2_over" fore="L2UI_CH3.summon_tab2"></td>
+ <td><button value="Rotas" action="bypass autofarm list_areas ROTA" width=74 height=24 back="L2UI_CH3.summon_tab2_over" fore="L2UI_CH3.summon_tab2"></td>
+ <td><button value="Opções" action="bypass autofarm options" width=74 height=24 back="L2UI_CH3.summon_tab1" fore="L2UI_CH3.summon_tab1"></td>
+ </tr>
+</table>
+<br>
+<table>
+ <tr>
+ <td></td>
+ <td>
+ Em áreas do tipo Aberto e Rota, é possível<br1> definir um <font color=LEVEL>raio</font> (distância) em que os targets podem ser<br1> atacados.
+ <br>
+ Ao definir um valor menor ou igual ao seu<br1> attack range (%attack_range%), seu character não<br1> irá se movimentar para fora de sua área.
+ </td>
+ </tr>
+</table>
+<br>
+<center>
+<table>
+ <tr>
+ <td></td>
+ <td width=80>
+ Raio (%current_radius%)
+ </td>
+ <td>
+ <combobox var=Radius list="%radius%" width=100>
+ </td>
+ <td></td>
+ <td>
+ <button value="Definir" action="bypass autofarm options radius $Radius" width=60 height=17 back="sek.cbui94" fore="sek.cbui92">
+ </td>
+ </tr>
+</table>
+<br>
+%msg%
+<table>
+ <tr>
+ <td width=40>
+ <button width=48 height=13 back="L2UI_ch3.smallbutton1_over" fore="L2UI_ch3.smallbutton1" action="bypass autofarm index" value="Voltar">
+ </td>
+ <td width=80>
+ <button width=95 height=13 back="L2UI_ch3.bigbutton_over" fore="L2UI_ch3.bigbutton" action="bypass autofarm clearpreview" value="Limpar preview">
+ </td>
+ </tr>
+</table>
+</center>
+
+
+
+<img src="L2UI.SquareWhite" width="300" height="1">
+<!-- L2jBrasil By Dhousefe -->
+</center>
+</body>
+</html>
