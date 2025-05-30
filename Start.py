@@ -1,21 +1,174 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, font as tkFont, filedialog, ttk # Adicionado ttk aqui
+from tkinter import scrolledtext, messagebox, font as tkFont, filedialog, ttk
 import subprocess
 import threading
 import os
 import time
 import sys
-import re # Para expressões regulares
+import re
+import shutil
+import requests
+
+def _check_command_is_available(command_parts_list, version_arg="--version"):
+    """Verifica se um comando está disponível no PATH e é executável."""
+    try:
+        cmd_to_run = command_parts_list
+        if version_arg: # Se um argumento de versão é fornecido, adicione-o
+            cmd_to_run = command_parts_list + [version_arg]
+
+        process = subprocess.run(
+            cmd_to_run,
+            capture_output=True, text=True, check=True,
+            encoding='utf-8', errors='replace',
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        )
+        # Extrai a primeira linha da saída da versão para log, se houver
+        first_line_output = process.stdout.strip().splitlines()[0] if process.stdout.strip() else "N/A (sem saída de versão)"
+        print(f"INFO: Comando '{command_parts_list[0]}' encontrado. Saída da verificação: {first_line_output}")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"AVISO: Comando '{command_parts_list[0]}' não encontrado ou falhou. Erro: {e}")
+        return False
+    except Exception as e_gen: # Captura outras exceções potenciais
+        print(f"AVISO: Exceção inesperada ao verificar comando '{command_parts_list[0]}': {e_gen}")
+        return False
+
+
+def ensure_git_is_available():
+    """
+    Verifica se o Git está instalado e acessível.
+    Se não estiver, informa o usuário com instruções.
+    Retorna True se o Git estiver disponível, False caso contrário.
+    """
+    print("Verificando disponibilidade do Git...")
+    if _check_command_is_available(["git"]): # A função _check_command_is_available usa --version por padrão
+        print("INFO: Git está instalado e acessível no PATH.")
+        return True
+    else:
+        print("ERRO: Git não encontrado no PATH do sistema.")
+        mensagem_erro_git = (
+            "O Git não foi encontrado no seu sistema ou não está configurado no PATH.\n\n"
+            "O Git é necessário para baixar e atualizar o código fonte do projeto para compilação.\n\n"
+            "Por favor, instale o Git a partir do site oficial:\n"
+            "https://git-scm.com/downloads\n\n"
+            "Durante a instalação no Windows, certifique-se de selecionar uma opção que adicione o Git ao PATH, "
+            "como por exemplo: 'Git from the command line and also from 3rd-party software' ou similar.\n\n"
+            "Após a instalação, pode ser necessário reiniciar este aplicativo ou o seu computador."
+        )
+        
+        temp_root_for_prompt = None
+        try:
+            if not tk._default_root: 
+                temp_root_for_prompt = tk.Tk()
+                temp_root_for_prompt.withdraw()
+            
+            messagebox.showerror("Git Não Encontrado", mensagem_erro_git, parent=temp_root_for_prompt)
+
+        except Exception as e_tk:
+            # Fallback para o console se a interface gráfica não puder ser usada para o erro
+            print("***********************************************************", file=sys.stderr)
+            print(f"ERRO CRÍTICO (Git): {mensagem_erro_git}", file=sys.stderr)
+            print("***********************************************************", file=sys.stderr)
+            if sys.stdin.isatty(): # Verifica se está em um terminal interativo
+                 input("Pressione Enter para continuar (funcionalidade Git estará desabilitada)...")
+        finally:
+            if temp_root_for_prompt:
+                temp_root_for_prompt.destroy()
+            
+        return False # Git não está disponível
 
 # --- FUNÇÃO AUXILIAR PARA CAMINHOS DE RECURSOS (ÍCONE, ETC.) ---
+# (Sua função resource_path aqui...)
 def resource_path(relative_path):
-    """ Retorna o caminho absoluto para o recurso, funciona em dev e no PyInstaller """
     try:
-        # PyInstaller cria uma pasta temporária e armazena o caminho em _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
-        base_path = os.path.abspath(".") # Diretório do script em modo de desenvolvimento
+        base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+# --- FUNÇÕES PARA VERIFICAR E INSTALAR 'requests' ---
+def _install_package_via_pip(package_name):
+    """Tenta instalar um pacote Python usando pip."""
+    try:
+        # sys.executable garante que estamos usando o pip do interpretador Python atual
+        print(f"Tentando instalar o pacote '{package_name}' via pip...")
+        # Usamos check=False para poder capturar e exibir erros de forma mais controlada
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", package_name],
+            capture_output=True, text=True, check=False,
+            encoding='utf-8', errors='replace' # Adicionado encoding para consistência
+        )
+        if result.returncode == 0:
+            print(f"Pacote '{package_name}' parece ter sido instalado com sucesso.")
+            # Importante: Após a instalação, a nova biblioteca pode não estar imediatamente
+            # disponível para importação no mesmo processo/script sem reiniciar ou truques.
+            # A verificação de importação deve ser feita após uma nova tentativa de import.
+            return True
+        else:
+            print(f"ERRO ao tentar instalar '{package_name}'. Código de saída: {result.returncode}")
+            print(f"Saída do Pip (stdout):\n{result.stdout}")
+            print(f"Saída de Erro do Pip (stderr):\n{result.stderr}")
+            return False
+    except Exception as e:
+        print(f"Exceção ao tentar instalar '{package_name}' via pip: {e}")
+        return False
+
+def ensure_requests_library_installed():
+    """
+    Verifica se a biblioteca 'requests' está instalada.
+    Se não estiver, pergunta ao usuário se deseja instalá-la.
+    Retorna True se 'requests' estiver disponível (instalada ou recém-instalada e importável),
+    False caso contrário.
+    """
+    try:
+        import requests
+        print("INFO: Biblioteca 'requests' já está instalada e disponível.")
+        return True
+    except ImportError:
+        print("AVISO: Biblioteca 'requests' não encontrada.")
+        
+        # Criar uma janela raiz temporária para o messagebox, se a app principal ainda não iniciou
+        temp_root_for_prompt = None
+        if not tk._default_root: # Verifica se já existe uma instância Tk root
+            temp_root_for_prompt = tk.Tk()
+            temp_root_for_prompt.withdraw() # Esconde a janela
+        
+        user_response = messagebox.askyesno(
+            "Dependência Recomendada",
+            "A biblioteca 'requests' é recomendada para downloads mais confiáveis (ex: Google Drive).\n"
+            "Ela não parece estar instalada no seu ambiente Python.\n\n"
+            "Deseja tentar instalá-la agora usando pip?\n"
+            "(Requer conexão com a internet e permissões para instalar pacotes Python)",
+            parent=temp_root_for_prompt # Garante que a messagebox fique sobre a tela certa
+        )
+
+        if temp_root_for_prompt:
+            temp_root_for_prompt.destroy()
+
+        if user_response:
+            if _install_package_via_pip("requests"):
+                # Tenta importar novamente após a instalação
+                try:
+                    import requests
+                    print("INFO: Biblioteca 'requests' instalada e importada com sucesso!")
+                    messagebox.showinfo("Instalação Concluída", "'requests' foi instalado com sucesso!")
+                    return True
+                except ImportError:
+                    message = "ERRO: 'requests' foi aparentemente instalado, mas não pôde ser importado.\nPode ser necessário reiniciar o aplicativo."
+                    print(message)
+                    messagebox.showerror("Erro de Importação Pós-Instalação", message)
+                    return False # Falhou em importar após instalar
+            else:
+                message = "Falha ao instalar 'requests'. A funcionalidade de download pode ser limitada (usará 'urllib' como fallback)."
+                print(message)
+                messagebox.showwarning("Falha na Instalação", message)
+                return False # Falhou em instalar
+        else:
+            print("INFO: Usuário optou por não instalar 'requests'. Downloads usarão 'urllib.request' como fallback.")
+            messagebox.showinfo("Informação", "A instalação de 'requests' foi pulada. Downloads do Google Drive podem ser menos estáveis.")
+            return False # Usuário não quis instalar
+
+# ... 
 
 # --- Classe para a Janela de Visualização de Log Individual (sem alterações) ---
 class LogViewerWindow(tk.Toplevel):
@@ -188,6 +341,9 @@ class ConfigEditorWindow(tk.Toplevel):
 class GameServerManager(tk.Tk):
     def __init__(self):
         super().__init__()
+        # ... (outras inicializações)
+        self.is_git_available = True # Valor padrão, será atualizado após a verificação externa
+        # ...
         self.title("Gerenciador de Servidores aCis409 By Dhousefe")
         
         # --- DEFINIR ÍCONE DA JANELA ---
@@ -220,20 +376,20 @@ class GameServerManager(tk.Tk):
             # Se rodando como um script .py normal
             self.base_dir = os.path.dirname(os.path.abspath(__file__))
         
-        self.login_bat_path = os.path.join(self.base_dir, "aCis_datapack", "build", "login", "startLoginServer.bat")
-        self.game_bat_path = os.path.join(self.base_dir, "aCis_datapack", "build", "gameserver", "startGameServer.bat")
+        self.login_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "startLoginServer.bat")
+        self.game_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "startGameServer.bat")
 
-        self.game_log_path = os.path.join(self.base_dir, "aCis_datapack", "build", "gameserver", "log", "game_server.log") # NOVO CAMINHO CORRETO
+        self.game_log_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "log", "game_server.log") # NOVO CAMINHO CORRETO
 
-        self.login_log_path = os.path.join(self.base_dir, "aCis_datapack", "build", "login", "log", "login_server.log") # NOVO CAMINHO CORRETO
+        self.login_log_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "log", "login_server.log") # NOVO CAMINHO CORRETO
 
         # Se seus logs têm nomes diferentes ou estão em outros locais, ajuste aqui.
         # self.login_log_path = os.path.join(self.base_dir, "login", "login_server.log") # Original
         # self.game_log_path = os.path.join(self.base_dir, "gameserver", "game_server.log") # Original
 
 
-        self.login_config_path = os.path.join(self.base_dir, "aCis_datapack", "build", "login", "config", "loginserver.properties")
-        self.game_config_path = os.path.join(self.base_dir, "aCis_datapack", "build", "gameserver", "config", "server.properties")
+        self.login_config_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "config", "loginserver.properties")
+        self.game_config_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "config", "server.properties")
         
         self.log_viewer_windows = {}
         self.config_editor_windows = {}
@@ -412,8 +568,9 @@ class GameServerManager(tk.Tk):
         
         
         
-        # --- Seção: Ações do Projeto (Dependências e Compilação) ---
-        # Podemos renomear o LabelFrame para refletir as novas ações
+        
+        # --- Seção: Ações do Projeto (Dependências, Compilação, Preparação) ---
+        # O LabelFrame pode continuar como "Ações do Projeto"
         project_actions_frame = tk.LabelFrame(self, text="Ações do Projeto", padx=10, pady=10)
         project_actions_frame.pack(fill="x", padx=10, pady=5)
 
@@ -421,17 +578,23 @@ class GameServerManager(tk.Tk):
         action_buttons_subframe = tk.Frame(project_actions_frame)
         action_buttons_subframe.pack(pady=5) # Centraliza o grupo de botões
 
-        # Botão Verificar Dependências (existente)
+        # Botão Verificar Dependências
         self.check_deps_button = tk.Button(action_buttons_subframe, text="Verificar Dependências",
                                            command=self.check_all_dependencies,
                                            font=("Arial", 10, "bold"), bg="orange", fg="white")
-        self.check_deps_button.pack(side=tk.LEFT, padx=10) # padx para espaçamento
+        self.check_deps_button.pack(side=tk.LEFT, padx=10) 
 
-        # NOVO BOTÃO: Compilar projeto (git)
+        # Botão Compilar projeto (git)
         self.compile_project_button = tk.Button(action_buttons_subframe, text="Compilar projeto (git)",
-                                                command=self.compile_project_git, # Novo método de comando
-                                                font=("Arial", 10, "bold"), bg="dodgerblue", fg="white") # Estilo de exemplo
+                                                command=self.compile_project_git, 
+                                                font=("Arial", 10, "bold"), bg="dodgerblue", fg="white")
         self.compile_project_button.pack(side=tk.LEFT, padx=10)
+
+        # NOVO BOTÃO: Preparar inicialização
+        self.prepare_init_button = tk.Button(action_buttons_subframe, text="Preparar inicialização",
+                                              command=self.prepare_initialization, # Novo método de comando
+                                              font=("Arial", 10, "bold"), bg="seagreen", fg="white") # Estilo de exemplo
+        self.prepare_init_button.pack(side=tk.LEFT, padx=10)
         
         # Labels para mostrar o status das dependências (permanecem em project_actions_frame)
         self.java_status_label = tk.Label(project_actions_frame, text="Java (OpenJDK-21): Não Verificado", fg="gray")
@@ -443,13 +606,13 @@ class GameServerManager(tk.Tk):
         self.mariadb_default_path_label = tk.Label(project_actions_frame, text="Caminho Padrão MariaDB 10.5: Não Verificado", fg="gray")
         self.mariadb_default_path_label.pack(anchor="w", padx=10)
         
-        # Botões de download (são declarados aqui, mas sua exibição é controlada em check_all_dependencies)
+        # Botões de download (declarados aqui, exibição controlada em check_all_dependencies)
         self.java_download_button = tk.Button(project_actions_frame, text="Baixar OpenJDK-21", 
                                               command=self.download_openjdk, state=tk.DISABLED)
-        # Nota: .pack() para os botões de download é chamado dentro de check_all_dependencies quando necessário.
-        
         self.mariadb_download_button = tk.Button(project_actions_frame, text="Baixar MariaDB", 
                                                  command=self.download_mariadb, state=tk.DISABLED)
+
+        # ... (restante do método create_widgets, como a manager_console_area) ...
 
 
 
@@ -464,13 +627,619 @@ class GameServerManager(tk.Tk):
         self.append_to_manager_console(f"Login BAT: {self.login_bat_path}\n")
         self.append_to_manager_console(f"Game BAT: {self.game_bat_path}\n")
         
+    def prepare_initialization(self):
+        """
+        Prepara a estrutura de pastas e arquivos para a inicialização do servidor.
+        """
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.append_to_manager_console(f"[{timestamp}] Comando 'Preparar inicialização' acionado.\n")
+
+        self.prepare_init_button.config(state=tk.DISABLED) # Desabilita o botão
+        self._show_loading_modal(title="Preparando", message="Preparando arquivos para inicialização...\nPor favor, aguarde.")
+        
+        preparation_thread = threading.Thread(target=self._perform_preparation_thread, daemon=True)
+        preparation_thread.start()
+        
+    
+    def _perform_preparation_thread(self):
+        project_source_dir = os.path.join(self.base_dir, "aCisDsec_project") 
+        compiled_server_dir_name = "Servidor Compilado"
+        target_root_dir = os.path.join(project_source_dir, compiled_server_dir_name)
+        
+        datapack_source_base = os.path.join(project_source_dir, "aCis_datapack", "build")
+        gameserver_dist_source_base = os.path.join(project_source_dir, "aCis_gameserver", "build", "dist")
+
+        self.append_to_manager_console_from_thread(f"\n--- Iniciando Preparação para Inicialização ---\n")
+        # ... (verificações de project_source_dir e target_root_dir como antes) ...
+        if not os.path.isdir(project_source_dir): # Verificação inicial
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO: Diretório do projeto fonte '{project_source_dir}' não encontrado!\nA preparação será abortada.")
+            self.after(0, lambda: self._preparation_finished(False, f"Diretório do projeto fonte '{os.path.basename(project_source_dir)}' não encontrado."))
+            return
+        target_existed_before = os.path.isdir(target_root_dir)
+        try:
+            os.makedirs(target_root_dir, exist_ok=True)
+            self.append_to_manager_console_from_thread(f"Diretório de destino '{target_root_dir}' criado/verificado.\n")
+        except Exception as e:
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO ao criar diretório de destino '{target_root_dir}': {e}\n")
+            self.after(0, lambda: self._preparation_finished(False, "Falha ao criar diretório de destino."))
+            return
+
+        overall_success = True
+        errors_occurred = []
+
+        # --- ETAPA 0: DOWNLOAD, DESCOMPRESSÃO E CÓPIA DE ARQUIVOS DO PACOTE GEO/CRESTS ---
+        self.append_to_manager_console_from_thread(f"\n--- Etapa 0: Processando pacote GeoData/Crests ---\n")
+        
+        gdrive_file_url = "https://drive.google.com/file/d/1iU5x4YkNzWblENUSwHDTlB4SHRxxeaSC/view?usp=sharing"
+        download_filename = "geo_crests_package.7z"
+        persistent_downloads_dir = os.path.join(project_source_dir, "_arquivos_baixados_servidor")
+        os.makedirs(persistent_downloads_dir, exist_ok=True)
+        downloaded_7z_file_path = os.path.join(persistent_downloads_dir, download_filename)
+        
+        # ETAPA 0.A: Download do pacote (como antes)
+        if os.path.exists(downloaded_7z_file_path):
+            self.append_to_manager_console_from_thread(f"INFO: Arquivo '{download_filename}' já existe. Download pulado.\n")
+        else:
+            self.append_to_manager_console_from_thread(f"Baixando '{download_filename}'...\n")
+            download_ok = self._download_gdrive_file(gdrive_file_url, downloaded_7z_file_path)
+            if not download_ok:
+                errors_occurred.append(f"Download {download_filename}")
+                overall_success = False
+        
+        # Prossegue somente se o download foi OK ou o arquivo já existia
+        if overall_success and os.path.isfile(downloaded_7z_file_path):
+            # Pasta temporária para onde a pasta raiz do .7z será extraída
+            temp_extraction_point = os.path.join(persistent_downloads_dir, "_temp_GEO_EXTRACTION_POINT")
+            # Nome da pasta raiz DENTRO do arquivo .7z que queremos processar
+            archive_internal_root_folder_name = "aCisDsec_Geodata" 
+            # Caminho para a pasta aCisDsec_Geodata DEPOIS de extraída para temp_extraction_point
+            extracted_archive_root_path = os.path.join(temp_extraction_point, archive_internal_root_folder_name)
+
+            # ETAPA 0.B: Descompressão da pasta específica 'aCisDsec_Geodata'
+            self.append_to_manager_console_from_thread(f"\nDescomprimindo '{archive_internal_root_folder_name}' de '{download_filename}'...\n")
+            seven_zip_exe_path = os.path.join(self.base_dir, "Tools", "7za.exe")
+
+            if not os.path.isfile(seven_zip_exe_path):
+                self.append_to_manager_console_from_thread(f"ERRO: '{seven_zip_exe_path}' não encontrado.\n")
+                errors_occurred.append("7za.exe não encontrado")
+                overall_success = False
+            else:
+                try:
+                    if os.path.isdir(temp_extraction_point): shutil.rmtree(temp_extraction_point)
+                    os.makedirs(temp_extraction_point, exist_ok=True)
+                    
+                    # Comando para extrair APENAS a pasta "aCisDsec_Geodata" (e seu conteúdo) para temp_extraction_point
+                    # O 7zip criará a pasta "aCisDsec_Geodata" dentro de temp_extraction_point
+                    decompress_command = [
+                        seven_zip_exe_path, "x", downloaded_7z_file_path,
+                        "-r", # Recurso para subdiretórios
+                        f"-o{temp_extraction_point}", # Diretório de SAÍDA para o 7zip
+                        archive_internal_root_folder_name, # O que extrair DE DENTRO do .7z
+                        "-y"  # Sim para todas as perguntas
+                    ]
+                    # O CWD pode ser o diretório do 7zip ou self.base_dir
+                    decompress_ok = self._run_command_and_stream_output(decompress_command, os.path.dirname(seven_zip_exe_path)) 
+                    
+                    if not decompress_ok:
+                        self.append_to_manager_console_from_thread(f"ERRO: Falha ao extrair '{archive_internal_root_folder_name}'.\n")
+                        errors_occurred.append(f"Descompressão de {archive_internal_root_folder_name}")
+                        overall_success = False
+                    else:
+                        self.append_to_manager_console_from_thread(f"Pasta '{archive_internal_root_folder_name}' extraída para '{temp_extraction_point}'.\n")
+                except Exception as e_decompress:
+                    self.append_to_manager_console_from_thread(f"ERRO durante a descompressão: {e_decompress}\n")
+                    errors_occurred.append(f"Descompressão: {e_decompress}")
+                    overall_success = False
+
+            # ETAPA 0.C: Cópia do CONTEÚDO de 'aCisDsec_Geodata' para o destino final
+            if overall_success:
+                final_destination_for_contents = os.path.join(target_root_dir, "gameserver", "data")
+                self.append_to_manager_console_from_thread(f"\nCopiando conteúdo de '{extracted_archive_root_path}' para '{final_destination_for_contents}'...\n")
+
+                if not os.path.isdir(extracted_archive_root_path):
+                    self.append_to_manager_console_from_thread(f"ERRO: Caminho do conteúdo extraído '{extracted_archive_root_path}' não encontrado!\n")
+                    errors_occurred.append("Conteúdo extraído não encontrado")
+                    overall_success = False
+                else:
+                    try:
+                        os.makedirs(final_destination_for_contents, exist_ok=True)
+                        
+                        # Itera sobre os itens DENTRO de extracted_archive_root_path (ex: geodata, crests)
+                        for item_name in os.listdir(extracted_archive_root_path):
+                            src_item_path = os.path.join(extracted_archive_root_path, item_name)
+                            dst_item_path = os.path.join(final_destination_for_contents, item_name) # Ex: .../data/geodata
+
+                            self.append_to_manager_console_from_thread(f"  Processando item: '{item_name}' de '{src_item_path}' para '{dst_item_path}'\n")
+                            if os.path.exists(dst_item_path):
+                                self.append_to_manager_console_from_thread(f"    Destino '{dst_item_path}' já existe. Removendo antes de copiar...\n")
+                                if os.path.isdir(dst_item_path):
+                                    shutil.rmtree(dst_item_path)
+                                else:
+                                    os.remove(dst_item_path)
+                            
+                            if os.path.isdir(src_item_path):
+                                shutil.copytree(src_item_path, dst_item_path)
+                            else: # É um arquivo
+                                shutil.copy2(src_item_path, dst_item_path)
+                            self.append_to_manager_console_from_thread(f"    '{item_name}' copiado com sucesso.\n")
+                    except Exception as e_copy_final:
+                        self.append_to_manager_console_from_thread(f"  ERRO ao copiar conteúdo para o destino final: {e_copy_final}\n")
+                        errors_occurred.append(f"Cópia final Geo/Crests: {e_copy_final}")
+                        overall_success = False
+            
+            # ETAPA 0.D: Limpeza da pasta de extração temporária (temp_extraction_point)
+            if os.path.isdir(temp_extraction_point):
+                self.append_to_manager_console_from_thread(f"Limpando pasta de extração temporária '{temp_extraction_point}'...\n")
+                try:
+                    # (Sua lógica de limpeza com retries pode ser usada aqui)
+                    shutil.rmtree(temp_extraction_point)
+                    self.append_to_manager_console_from_thread("Limpeza de temporários da Etapa 0 concluída.\n")
+                except Exception as e_clean:
+                    self.append_to_manager_console_from_thread(f"AVISO: Falha ao limpar pasta de extração temporária '{temp_extraction_point}': {e_clean}\n")
+        
+        if not overall_success:
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO na Etapa 0 (Download/Descompressão/Cópia GeoData/Crests). As etapas seguintes podem ser afetadas.\n")
+        else:
+            self.append_to_manager_console_from_thread(f"--- Etapa 0: Processamento do pacote GeoData/Crests concluído. ---\n")
+
+
+        # --- ETAPA 1. Copiar Arquivos do Datapack ---
+        if overall_success: # Só executa se a Etapa 0 foi bem-sucedida (ou se você não abortou acima)
+            self.append_to_manager_console_from_thread(f"\n--- 1. Copiando arquivos do Datapack de '{datapack_source_base}' ---\n")
+            # (Sua lógica detalhada de cópia do datapack aqui, como antes)
+            # ... (lembre-se de atualizar overall_success e errors_occurred se houver falhas aqui)
+            if not os.path.isdir(datapack_source_base):
+                self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do Datapack não encontrado: {datapack_source_base}. Pulando.\n")
+            else:
+                # ... (código de cópia do datapack) ...
+                pass # Substitua pelo seu código de cópia do datapack
+            self.append_to_manager_console_from_thread("Etapa 1 (Datapack) concluída (placeholder).\n") # Mensagem de placeholder
+        else:
+            self.append_to_manager_console_from_thread(f"\n--- Etapa 1: Cópia do Datapack pulada devido a falha crítica anterior. ---\n")
+
+
+        # --- ETAPA 2. Copiar Arquivos do GameServer (dist) ---
+        if overall_success: # Só executa se as etapas anteriores foram bem-sucedidas
+            self.append_to_manager_console_from_thread(f"\n--- 2. Copiando arquivos do GameServer (dist) de '{gameserver_dist_source_base}' ---\n")
+            # (Sua lógica detalhada de cópia do gameserver dist aqui, como antes)
+            # ... (lembre-se de atualizar overall_success e errors_occurred se houver falhas aqui)
+            if not os.path.isdir(gameserver_dist_source_base):
+                self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do GameServer (dist) não encontrado: {gameserver_dist_source_base}. Pulando.\n")
+            else:
+                # ... (código de cópia do gameserver dist) ...
+                pass # Substitua pelo seu código de cópia do gameserver dist
+            self.append_to_manager_console_from_thread("Etapa 2 (GameServer dist) concluída (placeholder).\n") # Mensagem de placeholder
+        else:
+            self.append_to_manager_console_from_thread(f"\n--- Etapa 2: Cópia do GameServer (dist) pulada devido a falhas anteriores. ---\n")
+
+        # Finalização
+        final_message_text = ""
+        if overall_success and not errors_occurred:
+            final_message_text = "Preparação da inicialização (download e todas as cópias) concluída com sucesso!"
+            self.append_to_manager_console_from_thread(f"\n{final_message_text}\nDiretório final: '{target_root_dir}'\n")
+        else:
+            error_details = "; ".join(errors_occurred) if errors_occurred else "Verifique o console para detalhes."
+            final_message_text = f"Preparação da inicialização concluída com problemas. Detalhes: {error_details}"
+            self.append_to_manager_console_from_thread(f"\n{final_message_text}\n")
+        
+        self.after(0, lambda: self._preparation_finished(overall_success and not errors_occurred, final_message_text))
+
+
+        # --- ETAPA 1. Copiar Arquivos do Datapack ---
+        # Esta etapa e a seguinte seriam executadas APÓS o download da Etapa 0.
+        # A lógica de cópia aqui permanece a mesma que você já tinha,
+        # mas agora ela ocorre após a Etapa 0 ter sido concluída.
+        if overall_success: # Prossegue apenas se o download (que era a única parte crítica da Etapa 0 agora) foi OK
+            self.append_to_manager_console_from_thread(f"\n--- 1. Copiando arquivos do Datapack de '{datapack_source_base}' ---\n")
+            if not os.path.isdir(datapack_source_base):
+                self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do Datapack não encontrado: {datapack_source_base}. Pulando esta etapa.\n")
+                # Você pode definir overall_success = False aqui se esta etapa for obrigatória
+            else:
+                try:
+                    # ... (sua lógica detalhada de cópia do datapack aqui, como no exemplo anterior) ...
+                    # Exemplo simplificado para manter o foco:
+                    for item_name in os.listdir(datapack_source_base):
+                        src_item = os.path.join(datapack_source_base, item_name)
+                        dst_item = os.path.join(target_root_dir, item_name)
+                        if item_name == "gameserver" and os.path.isdir(src_item) and target_existed_before:
+                             # Lógica especial para gameserver/data
+                            self.append_to_manager_console_from_thread(f"  Processando pasta '{item_name}' (com exceção para 'data')...\n")
+                            os.makedirs(dst_item, exist_ok=True) 
+                            for sub_item_name in os.listdir(src_item):
+                                src_sub_item = os.path.join(src_item, sub_item_name)
+                                dst_sub_item = os.path.join(dst_item, sub_item_name)
+                                if sub_item_name == "data" and os.path.isdir(src_sub_item):
+                                    self.append_to_manager_console_from_thread(f"    Pulando subpasta: '{src_sub_item}' (regra: não sobrescrever gameserver/data se destino existia).\n")
+                                    continue 
+                                if os.path.isdir(src_sub_item): shutil.copytree(src_sub_item, dst_sub_item, dirs_exist_ok=True)
+                                else: shutil.copy2(src_sub_item, dst_sub_item)
+                        elif os.path.isdir(src_item): shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+                        else: shutil.copy2(src_item, dst_item)
+                    self.append_to_manager_console_from_thread("Cópia do Datapack concluída.\n")
+                except Exception as e:
+                    self.append_to_manager_console_from_thread(f"ERRO durante a cópia do Datapack: {e}\n")
+                    errors_occurred.append(f"Datapack: {e}")
+                    overall_success = False
+        else:
+            self.append_to_manager_console_from_thread(f"\n--- Etapa 1: Cópia do Datapack pulada devido a falha na Etapa 0. ---\n")
+
+
+        # --- ETAPA 2. Copiar Arquivos do GameServer (dist) ---
+        if overall_success: # Prossegue apenas se as etapas anteriores foram OK
+            self.append_to_manager_console_from_thread(f"\n--- 2. Copiando arquivos do GameServer (dist) de '{gameserver_dist_source_base}' ---\n")
+            if not os.path.isdir(gameserver_dist_source_base):
+                self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do GameServer (dist) não encontrado: {gameserver_dist_source_base}. Pulando esta etapa.\n")
+                # Você pode definir overall_success = False aqui se esta etapa for obrigatória
+            else:
+                try:
+                    # ... (sua lógica detalhada de cópia do gameserver dist aqui, como no exemplo anterior) ...
+                    # Exemplo simplificado para manter o foco:
+                    folders_to_skip_if_dest_exists = {"login": ["config"], "gameserver": ["config"]}
+                    for item_name in os.listdir(gameserver_dist_source_base):
+                        src_item_path = os.path.join(gameserver_dist_source_base, item_name)
+                        dst_item_path = os.path.join(target_root_dir, item_name)
+                        if os.path.isdir(src_item_path) and item_name in folders_to_skip_if_dest_exists:
+                            os.makedirs(dst_item_path, exist_ok=True)
+                            subfolders_to_skip_for_this_item = folders_to_skip_if_dest_exists[item_name]
+                            for sub_item_name in os.listdir(src_item_path):
+                                src_sub_item_path = os.path.join(src_item_path, sub_item_name)
+                                dst_sub_item_path = os.path.join(dst_item_path, sub_item_name)
+                                if sub_item_name in subfolders_to_skip_for_this_item and os.path.isdir(src_sub_item_path) and os.path.exists(dst_sub_item_path):
+                                    self.append_to_manager_console_from_thread(f"    Pulando subpasta: '{src_sub_item_path}' (regra {item_name}/{sub_item_name} e destino existe).\n")
+                                    continue
+                                if os.path.isdir(src_sub_item_path): shutil.copytree(src_sub_item_path, dst_sub_item_path, dirs_exist_ok=True)
+                                else: shutil.copy2(src_sub_item_path, dst_sub_item_path)
+                        elif os.path.isdir(src_item_path): shutil.copytree(src_item_path, dst_item_path, dirs_exist_ok=True)
+                        else: shutil.copy2(src_item_path, dst_item_path)
+                    self.append_to_manager_console_from_thread("Cópia do GameServer (dist) concluída.\n")
+                except Exception as e:
+                    self.append_to_manager_console_from_thread(f"ERRO durante a cópia do GameServer (dist): {e}\n")
+                    errors_occurred.append(f"GameServer (dist): {e}")
+                    overall_success = False
+        else:
+            self.append_to_manager_console_from_thread(f"\n--- Etapa 2: Cópia do GameServer (dist) pulada devido a falhas anteriores. ---\n")
+
+
+        # Finalização
+        final_message_text = ""
+        if overall_success and not errors_occurred:
+            final_message_text = "Preparação da inicialização (download e cópias) concluída com sucesso!"
+            self.append_to_manager_console_from_thread(f"\n{final_message_text}\nDiretório final: '{target_root_dir}'\n")
+        else:
+            error_details = "; ".join(errors_occurred) if errors_occurred else "Verifique o console."
+            final_message_text = f"Preparação da inicialização concluída com problemas. Detalhes: {error_details}"
+            self.append_to_manager_console_from_thread(f"\n{final_message_text}\n")
+        
+        self.after(0, lambda: self._preparation_finished(overall_success, final_message_text))
+
+
+        # --- 1. Copiar Arquivos do Datapack ---
+        # (Seu código da Etapa 1 aqui - como na resposta anterior)
+        # ...
+        if overall_success: # Só prossegue se a Etapa 0 não teve falha crítica (se você não retornou acima)
+            self.append_to_manager_console_from_thread(f"\n--- 1. Copiando arquivos do Datapack de '{datapack_source_base}' ---\n")
+            # ... (lógica de cópia do datapack) ...
+        # ... (resto do método como antes, atualizando overall_success e errors_occurred) ...
+
+        # --- 2. Copiar Arquivos do GameServer (dist) ---
+        if overall_success: # Só prossegue se as etapas anteriores não tiveram falha crítica
+            self.append_to_manager_console_from_thread(f"\n--- 2. Copiando arquivos do GameServer (dist) de '{gameserver_dist_source_base}' ---\n")
+            # ... (lógica de cópia do gameserver dist) ...
+
+        # Finalização (como antes)
+        if overall_success and not errors_occurred:
+            msg = "Preparação da inicialização concluída com sucesso!"
+            self.append_to_manager_console_from_thread(f"\n{msg}\nDiretório final: '{target_root_dir}'\n")
+            self.after(0, lambda: self._preparation_finished(True, msg))
+        else:
+            error_details = "; ".join(errors_occurred) if errors_occurred else "Verifique o console."
+            msg = f"Preparação da inicialização concluída com problemas. Detalhes: {error_details}"
+            self.append_to_manager_console_from_thread(f"\n{msg}\n")
+            self.after(0, lambda: self._preparation_finished(False, msg))
+        """
+        Executa a cópia e preparação dos arquivos em uma thread separada.
+        """
+        # !!! IMPORTANTE: AJUSTE ESTE CAMINHO SE NECESSÁRIO !!!
+        # Deve ser o mesmo caminho raiz do projeto usado na compilação.
+        project_source_dir = os.path.join(self.base_dir, "aCisDsec_project") 
+        
+        compiled_server_dir_name = "Servidor Compilado"
+        target_root_dir = os.path.join(project_source_dir, compiled_server_dir_name)
+
+        datapack_source_base = os.path.join(project_source_dir, "aCis_datapack", "build")
+        gameserver_dist_source_base = os.path.join(project_source_dir, "aCis_gameserver", "build", "dist")
+
+        self.append_to_manager_console_from_thread(f"\n--- Iniciando Preparação para Inicialização ---\n")
+        self.append_to_manager_console_from_thread(f"Diretório do projeto fonte: {project_source_dir}\n")
+        self.append_to_manager_console_from_thread(f"Diretório de destino final: {target_root_dir}\n")
+
+        overall_success = True
+        errors_occurred = []
+
+        # Verifica se o diretório do projeto fonte existe
+        if not os.path.isdir(project_source_dir):
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO: Diretório do projeto fonte '{project_source_dir}' não encontrado!\n")
+            self.after(0, lambda: self._preparation_finished(False, "Diretório do projeto fonte não encontrado."))
+            return
+
+        target_existed_before = os.path.isdir(target_root_dir)
+        try:
+            os.makedirs(target_root_dir, exist_ok=True)
+            self.append_to_manager_console_from_thread(f"Diretório de destino '{target_root_dir}' criado/verificado.\n")
+        except Exception as e:
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO ao criar diretório de destino '{target_root_dir}': {e}\n")
+            self.after(0, lambda: self._preparation_finished(False, "Falha ao criar diretório de destino."))
+            return
+
+        # --- 1. Copiar Arquivos do Datapack ---
+        self.append_to_manager_console_from_thread(f"\n--- 1. Copiando arquivos do Datapack de '{datapack_source_base}' ---\n")
+        if not os.path.isdir(datapack_source_base):
+            self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do Datapack não encontrado: {datapack_source_base}. Pulando esta etapa.\n")
+            # overall_success = False # Pode ser um aviso em vez de falha total
+        else:
+            try:
+                for item_name in os.listdir(datapack_source_base):
+                    src_item = os.path.join(datapack_source_base, item_name)
+                    dst_item = os.path.join(target_root_dir, item_name)
+
+                    if item_name == "gameserver" and os.path.isdir(src_item) and target_existed_before:
+                        self.append_to_manager_console_from_thread(f"  Processando pasta '{item_name}' (com exceção para 'data')...\n")
+                        os.makedirs(dst_item, exist_ok=True) 
+                        for sub_item_name in os.listdir(src_item):
+                            src_sub_item = os.path.join(src_item, sub_item_name)
+                            dst_sub_item = os.path.join(dst_item, sub_item_name)
+                            if sub_item_name == "data" and os.path.isdir(src_sub_item):
+                                self.append_to_manager_console_from_thread(f"    Pulando subpasta: '{src_sub_item}' (regra: não sobrescrever gameserver/data se destino existia).\n")
+                                continue 
+                            
+                            if os.path.isdir(src_sub_item):
+                                shutil.copytree(src_sub_item, dst_sub_item, dirs_exist_ok=True)
+                            else:
+                                shutil.copy2(src_sub_item, dst_sub_item)
+                        self.append_to_manager_console_from_thread(f"  Conteúdo de '{item_name}' (exceto 'data') copiado.\n")
+                    elif os.path.isdir(src_item):
+                        self.append_to_manager_console_from_thread(f"  Copiando pasta: {src_item} para {dst_item}\n")
+                        shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+                    else: # É um arquivo
+                        self.append_to_manager_console_from_thread(f"  Copiando arquivo: {src_item} para {dst_item}\n")
+                        shutil.copy2(src_item, dst_item)
+                self.append_to_manager_console_from_thread("Cópia do Datapack concluída.\n")
+            except Exception as e:
+                self.append_to_manager_console_from_thread(f"ERRO durante a cópia do Datapack: {e}\n")
+                errors_occurred.append(f"Datapack: {e}")
+                overall_success = False
+
+        # --- 2. Copiar Arquivos do GameServer (dist) ---
+        self.append_to_manager_console_from_thread(f"\n--- 2. Copiando arquivos do GameServer (dist) de '{gameserver_dist_source_base}' ---\n")
+        if not os.path.isdir(gameserver_dist_source_base):
+            self.append_to_manager_console_from_thread(f"AVISO: Diretório de origem do GameServer (dist) não encontrado: {gameserver_dist_source_base}. Pulando esta etapa.\n")
+            # overall_success = False # Pode ser um aviso
+        else:
+            try:
+                # Pastas dentro de gameserver_dist_source_base/login ou /gameserver que não devem ser sobrescritas se já existirem no destino
+                folders_to_skip_if_dest_exists = {
+                    "login": ["config"],
+                    "gameserver": ["config"]
+                }
+
+                for item_name in os.listdir(gameserver_dist_source_base): # Ex: item_name pode ser "login", "gameserver", etc.
+                    src_item_path = os.path.join(gameserver_dist_source_base, item_name)
+                    dst_item_path = os.path.join(target_root_dir, item_name)
+
+                    if os.path.isdir(src_item_path) and item_name in folders_to_skip_if_dest_exists:
+                        self.append_to_manager_console_from_thread(f"  Processando pasta '{item_name}' (com exceções para subpastas '{', '.join(folders_to_skip_if_dest_exists[item_name])}')...\n")
+                        os.makedirs(dst_item_path, exist_ok=True) # Garante que a pasta de nível superior exista no destino
+                        
+                        subfolders_to_skip_for_this_item = folders_to_skip_if_dest_exists[item_name]
+                        for sub_item_name in os.listdir(src_item_path): # Ex: sub_item_name pode ser "config", "libs", etc.
+                            src_sub_item_path = os.path.join(src_item_path, sub_item_name)
+                            dst_sub_item_path = os.path.join(dst_item_path, sub_item_name)
+
+                            # Verifica se esta subpasta específica deve ser pulada e se ela já existe no destino
+                            if sub_item_name in subfolders_to_skip_for_this_item and os.path.isdir(src_sub_item_path) and os.path.exists(dst_sub_item_path):
+                                self.append_to_manager_console_from_thread(f"    Pulando subpasta: '{src_sub_item_path}' (regra: não sobrescrever {item_name}/{sub_item_name} se destino existe).\n")
+                                continue
+                            
+                            if os.path.isdir(src_sub_item_path):
+                                shutil.copytree(src_sub_item_path, dst_sub_item_path, dirs_exist_ok=True)
+                            else:
+                                shutil.copy2(src_sub_item_path, dst_sub_item_path)
+                        self.append_to_manager_console_from_thread(f"  Conteúdo de '{item_name}' (com exceções) copiado.\n")
+                    elif os.path.isdir(src_item_path): 
+                        self.append_to_manager_console_from_thread(f"  Copiando pasta: {src_item_path} para {dst_item_path}\n")
+                        shutil.copytree(src_item_path, dst_item_path, dirs_exist_ok=True)
+                    else: 
+                        self.append_to_manager_console_from_thread(f"  Copiando arquivo: {src_item_path} para {dst_item_path}\n")
+                        shutil.copy2(src_item_path, dst_item_path)
+                self.append_to_manager_console_from_thread("Cópia do GameServer (dist) concluída.\n")
+            except Exception as e:
+                self.append_to_manager_console_from_thread(f"ERRO durante a cópia do GameServer (dist): {e}\n")
+                errors_occurred.append(f"GameServer (dist): {e}")
+                overall_success = False
+
+        # Finalização
+        if overall_success and not errors_occurred:
+            msg = "Preparação da inicialização concluída com sucesso!"
+            self.append_to_manager_console_from_thread(f"\n{msg}\nDiretório final: '{target_root_dir}'\n")
+            self.after(0, lambda: self._preparation_finished(True, msg))
+        else:
+            error_details = "; ".join(errors_occurred)
+            msg = f"Preparação da inicialização concluída com erros. Detalhes: {error_details}"
+            if not errors_occurred and not overall_success: # Se overall_success foi setado para False por outros motivos
+                 msg = "Preparação da inicialização concluída com problemas. Verifique o console."
+
+            self.append_to_manager_console_from_thread(f"\n{msg}\n")
+            self.after(0, lambda: self._preparation_finished(False, msg))
+            
+    def _preparation_finished(self, success, message):
+        """ Chamado ao final do processo de preparação para atualizar a UI. """
+        if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+            try:
+                if hasattr(self, 'progress_bar'):
+                    self.progress_bar.stop()
+                self.loading_window.grab_release()
+                self.loading_window.destroy()
+            except tk.TclError:
+                pass
+            finally:
+                self.loading_window = None
+                if hasattr(self, 'progress_bar'):
+                    del self.progress_bar
+
+        self.prepare_init_button.config(state=tk.NORMAL) # Reabilita o botão
+        
+        if success:
+            messagebox.showinfo("Preparação para Inicialização", message)
+        else:
+            messagebox.showerror("Preparação para Inicialização", f"Falha no processo: {message}\nVerifique o console para mais detalhes.")
+        
+        self.lift()
+        self.focus_force()
+    
+    def _download_gdrive_file(self, gdrive_url, destination_path):
+        """
+        Baixa um arquivo do Google Drive, lidando com a página de confirmação de arquivos grandes.
+        Requer a biblioteca 'requests'.
+        gdrive_url: URL de compartilhamento do Google Drive.
+        destination_path: Caminho completo onde salvar o arquivo.
+        Retorna True se o download for bem-sucedido, False caso contrário.
+        """
+        self.append_to_manager_console_from_thread(f"Iniciando download de: {gdrive_url}\nPara: {destination_path}\n")
+        
+        file_id = None
+        try:
+            match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', gdrive_url)
+            if match:
+                file_id = match.group(1)
+        except Exception:
+            pass
+            
+        if not file_id:
+            self.append_to_manager_console_from_thread("ERRO: ID do arquivo do Google Drive não pôde ser extraído da URL fornecida.\n")
+            return False
+
+        initial_download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        
+        try:
+            import requests
+        except ImportError:
+            self.append_to_manager_console_from_thread(
+                "ERRO CRÍTICO: A biblioteca 'requests' é necessária para esta funcionalidade de download do Google Drive mas não está instalada.\n"
+                "Por favor, permita a instalação quando o programa iniciar ou instale manualmente ('pip install requests').\n"
+            )
+            return False
+
+        try:
+            session = requests.Session() # Usar uma sessão para persistir cookies se necessário
+            self.append_to_manager_console_from_thread(f"Tentando baixar (com 'requests') de: {initial_download_url}\n")
+            
+            # Primeira requisição para obter a página de aviso ou o arquivo diretamente
+            response1 = session.get(initial_download_url, stream=True, timeout=20) # Timeout menor para a primeira requisição
+            response1.raise_for_status()
+
+            # Verifica se é a página de aviso HTML
+            content_type1 = response1.headers.get('Content-Type', '').lower()
+            is_html_warning_page = 'text/html' in content_type1
+            
+            actual_file_response = response1
+
+            if is_html_warning_page:
+                html_content = response1.text # Lê o conteúdo da página de aviso
+                if "Virus scan warning" in html_content or "uc-download-link" in html_content : # Confirma que é a página de aviso
+                    self.append_to_manager_console_from_thread("Página de aviso do Google Drive detectada. Extraindo informações do formulário...\n")
+
+                    form_action_match = re.search(r'<form.*?id="download-form".*?action="([^"]+)"', html_content, re.IGNORECASE)
+                    if not form_action_match:
+                        self.append_to_manager_console_from_thread("ERRO: Não foi possível encontrar a URL 'action' do formulário de download na página de aviso.\n")
+                        return False
+                    
+                    confirm_url = form_action_match.group(1) # Ex: https://drive.usercontent.google.com/download
+
+                    form_params = {}
+                    hidden_inputs = re.findall(r'<input.*?type="hidden".*?name="([^"]+)".*?value="([^"]*)"', html_content, re.IGNORECASE)
+                    
+                    if not hidden_inputs:
+                        self.append_to_manager_console_from_thread("ERRO: Não foi possível encontrar os campos ocultos (hidden inputs) do formulário de download.\n")
+                        return False
+                    
+                    for name, value in hidden_inputs:
+                        form_params[name] = value
+                    
+                    self.append_to_manager_console_from_thread(f"Parâmetros de confirmação extraídos: {form_params}\n")
+                    self.append_to_manager_console_from_thread(f"Enviando requisição de download final para: {confirm_url}\n")
+                    
+                    # Segunda requisição - o download real
+                    actual_file_response = session.get(confirm_url, params=form_params, stream=True, timeout=3600) # Timeout maior para download
+                    actual_file_response.raise_for_status()
+                else:
+                    # É HTML mas não a página de aviso esperada
+                    self.append_to_manager_console_from_thread("ERRO: Recebido HTML inesperado do Google Drive. Não é a página de aviso conhecida.\n")
+                    return False
+
+            # Neste ponto, actual_file_response deve ser o stream do arquivo real
+            final_content_type = actual_file_response.headers.get('Content-Type', '').lower()
+            if 'text/html' in final_content_type:
+                 self.append_to_manager_console_from_thread("ERRO: Download final ainda resultou em uma página HTML. O mecanismo de download do Google Drive pode ter mudado.\n")
+                 return False
+
+            self.append_to_manager_console_from_thread("Iniciando gravação do arquivo...\n")
+            total_downloaded_bytes = 0
+            with open(destination_path, 'wb') as f:
+                for chunk in actual_file_response.iter_content(chunk_size=81920): # Chunks de 80KB
+                    if chunk:
+                        f.write(chunk)
+                        total_downloaded_bytes += len(chunk)
+            
+            downloaded_mb = total_downloaded_bytes / (1024 * 1024)
+            self.append_to_manager_console_from_thread(f"Download concluído. Total baixado: {downloaded_mb:.2f} MB.\n")
+
+            # Verificação simples do tamanho (aproximado de 529M que você mencionou)
+            expected_min_size_mb = 500 
+            if downloaded_mb < expected_min_size_mb:
+                self.append_to_manager_console_from_thread(
+                    f"AVISO: Tamanho do arquivo baixado ({downloaded_mb:.2f}MB) é menor que o esperado ({expected_min_size_mb}MB+).\n"
+                    "O download pode estar incompleto ou o arquivo no Drive é menor que o previsto."
+                )
+                # Você pode decidir se isso é um erro fatal: return False
+            else:
+                self.append_to_manager_console_from_thread("Tamanho do arquivo parece consistente.\n")
+            
+            return True
+            
+        except requests.exceptions.RequestException as e_req:
+            self.append_to_manager_console_from_thread(f"ERRO DE REDE (requests) durante o download: {e_req}\n")
+        except Exception as e_gen:
+            self.append_to_manager_console_from_thread(f"ERRO GERAL durante o download: {e_gen}\n")
+        
+        # Limpeza em caso de erro
+        if os.path.exists(destination_path):
+            try:
+                # Remove apenas se for o arquivo HTML pequeno
+                if os.path.getsize(destination_path) < 1 * 1024 * 1024: # Se menor que 1MB, provavelmente não é o arquivo certo
+                    os.remove(destination_path)
+                    self.append_to_manager_console_from_thread(f"Arquivo parcial/incorreto '{destination_path}' removido devido a erro.\n")
+            except Exception: 
+                pass # Falha ao remover não é crítico aqui
+        return False
+    
+        
+        
     def compile_project_git(self):
+        if not self.is_git_available:
+            messagebox.showerror("Git Não Disponível", 
+                                 "O Git não foi encontrado no seu sistema ou não está acessível.\n"
+                                 "A funcionalidade de compilar o projeto via Git está desabilitada.\n\n"
+                                 "Por favor, instale o Git (veja https://git-scm.com/downloads) "
+                                 "e certifique-se de que ele foi adicionado ao PATH do sistema. "
+                                 "Pode ser necessário reiniciar este aplicativo após a instalação do Git.")
+            self.append_to_manager_console("Tentativa de compilação via Git falhou: Git não disponível.\n")
+            return
+
+        # Se o Git estiver disponível, o restante do método continua como antes:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.append_to_manager_console(f"[{timestamp}] Comando 'Compilar projeto (git)' acionado.\n")
         
-        self.compile_project_button.config(state=tk.DISABLED) # Desabilita o botão
-        
-        # MOSTRAR JANELA DE CARREGAMENTO MODAL
+        self.compile_project_button.config(state=tk.DISABLED)
         self._show_loading_modal(title="Compilando", message="Compilando o projeto...\nGit Pull e Ant em execução.\nPor favor, aguarde.")
         
         compilation_thread = threading.Thread(target=self._perform_compilation_thread, daemon=True)
@@ -724,6 +1493,12 @@ class GameServerManager(tk.Tk):
         ant_env["ANT_HOME"] = ant_home_path
         ant_env["PATH"] = ant_bin_path + os.pathsep + ant_env.get("PATH", "")
         # Potencialmente adicionar JAVA_HOME ao ant_env aqui, se necessário e detectado
+        system_java_home = os.environ.get("JAVA_HOME")
+        if system_java_home:
+            ant_env["JAVA_HOME"] = system_java_home
+            self.append_to_manager_console_from_thread(f"DEBUG: Usando JAVA_HOME do sistema para Ant: {system_java_home}\n")
+        else:
+            self.append_to_manager_console_from_thread("DEBUG: JAVA_HOME não encontrado no ambiente do sistema.\n")
         
         self.append_to_manager_console_from_thread(f"Verificando Ant do projeto com '{ant_executable_full_path} -version'...\n")
         try:
@@ -793,7 +1568,13 @@ class GameServerManager(tk.Tk):
         if not os.path.isfile(gameserver_build_file):
             self.append_to_manager_console_from_thread(f"ERRO: Arquivo 'build.xml' não encontrado para o GameServer em '{gameserver_build_dir}'. Pulando compilação do GameServer.\n")
         else:
-            ant_compile_command_gameserver = [ant_executable_full_path]
+            # Antes de compilar o gameserver
+            ant_clean_command_gameserver = [ant_executable_full_path, "clean"]
+            self.append_to_manager_console_from_thread(f"Executando 'ant clean' para GameServer...\n")
+            self._run_command_and_stream_output(ant_clean_command_gameserver, gameserver_build_dir, custom_env=ant_env)
+
+            # Depois o comando de compilação normal
+            ant_compile_command_gameserver = [ant_executable_full_path, "-v"]
             # Use um target específico para o gameserver se houver, senão o default.
             # Ex: ant_target_gameserver = "build_gameserver" ou deixe ant_target_default
             if ant_target_default:
@@ -1541,13 +2322,42 @@ if __name__ == "__main__":
         sys.exit(1)  # Encerra o script
     # --- FIM DA VERIFICAÇÃO DA VERSÃO DO PYTHON ---
 
+    
+    
+    # --- GARANTIR DISPONIBILIDADE DA BIBLIOTECA 'requests' ---
+    print("Verificando a disponibilidade da biblioteca 'requests'...")
+    # A função ensure_requests_library_installed() já imprime e mostra messageboxes.
+    # O valor de retorno pode ser usado se você quiser tomar decisões adicionais,
+    # mas a função _download_gdrive_file já tem um fallback.
+    ensure_requests_library_installed() 
+    print("Verificação de 'requests' concluída. Prosseguindo com a inicialização da aplicação...\n")
+    
+    # --- VERIFICAR DISPONIBILIDADE DO GIT ---
+    git_available = ensure_git_is_available()
+    if not git_available:
+        print("AVISO: Git não está disponível. Funcionalidades que dependem do Git (como compilação de projeto) podem estar desabilitadas ou não funcionarão.\n")
+    else:
+        print("INFO: Git está disponível para uso.\n")
+    
+    # Código para melhorar a aparência no Windows (DPI awareness)
     # Código para melhorar a aparência no Windows (DPI awareness)
     if sys.platform == "win32":
         try:
             from ctypes import windll
             windll.shcore.SetProcessDpiAwareness(1) 
         except Exception:
-            pass # Ignorar se não funcionar
+            pass 
             
     app = GameServerManager()
+    
+    # Passar o status do Git para a instância da app para que ela possa desabilitar o botão se necessário
+    app.is_git_available = git_available 
+    if not git_available and hasattr(app, 'compile_project_button'):
+        # Tenta desabilitar o botão se já foi criado; idealmente, o botão verificaria essa flag ao ser clicado
+         try:
+            app.compile_project_button.config(state=tk.DISABLED)
+            app.append_to_manager_console("AVISO: Botão 'Compilar projeto (git)' desabilitado pois Git não foi encontrado.\n")
+         except tk.TclError: # Botão pode não existir ainda ou app não totalmente pronta
+            pass
+            
     app.mainloop()
