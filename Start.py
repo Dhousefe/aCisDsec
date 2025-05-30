@@ -531,10 +531,6 @@ class GameServerManager(tk.Tk):
             
 
     def _perform_compilation_thread(self):
-        """
-        Executa as etapas de clone/pull do Git e compilação com Ant (embutido) em uma thread separada.
-        A verificação e configuração do Ant embutido agora ocorrem APÓS as operações Git.
-        """
         # !!! IMPORTANTE: CONFIGURE ESTE CAMINHO PARA O CÓDIGO FONTE DO PROJETO !!!
         project_source_dir = os.path.join(self.base_dir, "aCisDsec_project") 
         # Ex: r"E:\aCisDsec\pasta\aCisDsec_source" ou onde quer que o código do aCisDsec deva ficar.
@@ -547,6 +543,9 @@ class GameServerManager(tk.Tk):
         self.append_to_manager_console_from_thread(f"Repositório Git: {git_repo_url}, Branch: {git_branch}\n")
 
         # --- ETAPA 1: OPERAÇÕES GIT (CLONE OU PULL) ---
+        # (Esta parte permanece como na resposta anterior - verifica Git, clona ou faz pull)
+        # ... (código da Etapa 1 - Git aqui) ...
+        # Certifique-se que, se esta etapa falhar, o método retorne e chame _compilation_finished(False, ...)
         self.append_to_manager_console_from_thread(f"\n--- Etapa 1: Verificando e atualizando código fonte via Git ---\n")
         try:
             subprocess.run(["git", "--version"], capture_output=True, check=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -584,7 +583,7 @@ class GameServerManager(tk.Tk):
             
             git_clone_command = ["git", "clone", "--branch", git_branch, git_repo_url, clone_target_folder_name]
             self.append_to_manager_console_from_thread(f"Executando clone em '{parent_dir}' para a pasta '{clone_target_folder_name}'...\n")
-            clone_success = self._run_command_and_stream_output(git_clone_command, parent_dir) # Passar None para custom_env se não for necessário
+            clone_success = self._run_command_and_stream_output(git_clone_command, parent_dir) 
             if not clone_success:
                 self.append_to_manager_console_from_thread(f"ERRO: Falha ao clonar o repositório '{git_repo_url}'. Verifique as mensagens.\n")
                 self.after(0, lambda: self._compilation_finished(False, "Falha ao clonar repositório."))
@@ -595,7 +594,7 @@ class GameServerManager(tk.Tk):
         if perform_pull_after_setup:
             self.append_to_manager_console_from_thread(f"Garantindo o branch '{git_branch}' e atualizando via 'git pull' em '{project_source_dir}'...\n")
             checkout_command = ["git", "checkout", git_branch]
-            self._run_command_and_stream_output(checkout_command, project_source_dir) # Ignoramos o resultado do checkout por ora, pull tentará de qualquer forma
+            self._run_command_and_stream_output(checkout_command, project_source_dir) 
 
             pull_command = ["git", "pull", "origin", git_branch]
             pull_success = self._run_command_and_stream_output(pull_command, project_source_dir)
@@ -607,29 +606,36 @@ class GameServerManager(tk.Tk):
         
         self.append_to_manager_console_from_thread(f"--- Etapa 1: Código fonte do projeto '{os.path.basename(project_source_dir)}' pronto. ---\n")
 
-        # --- ETAPA 2: CONFIGURAÇÃO E VERIFICAÇÃO DO ANT EMBUTIDO ---
-        self.append_to_manager_console_from_thread(f"\n--- Etapa 2: Configurando e verificando Ant embutido ---\n")
-        ant_folder_name = {os.path.basename(project_source_dir)}, "Ant" 
-        ant_home_path = os.path.join(self.base_dir, ant_folder_name) # Ant ao lado do Start.py
+
+        # --- ETAPA 2: CONFIGURAÇÃO E VERIFICAÇÃO DO ANT (DENTRO DO PROJETO GIT) ---
+        self.append_to_manager_console_from_thread(f"\n--- Etapa 2: Configurando e verificando Ant (embutido no projeto Git) ---\n")
+        
+        ant_folder_name_in_project = "Ant"  # Nome da pasta "Ant" DENTRO do seu aCisDsec_project
+        # *** CORREÇÃO PRINCIPAL AQUI: ant_home_path é relativo a project_source_dir ***
+        ant_home_path = os.path.join(project_source_dir, ant_folder_name_in_project) 
+        
         ant_bin_path = os.path.join(ant_home_path, "bin")
         ant_executable_name = "ant.bat" if sys.platform == "win32" else "ant"
         ant_executable_full_path = os.path.join(ant_bin_path, ant_executable_name)
 
-        self.append_to_manager_console_from_thread(f"Procurando Ant embutido em: {ant_home_path}\n")
+        self.append_to_manager_console_from_thread(f"Procurando Ant do projeto em: {ant_home_path}\n")
 
         if not os.path.isdir(ant_home_path) or not os.path.isfile(ant_executable_full_path):
             self.append_to_manager_console_from_thread(
-                f"ERRO: Pasta do Ant embutido ('{ant_home_path}') ou executável ('{ant_executable_full_path}') não encontrado.\n"
-                f"Verifique se a pasta '{ant_folder_name}' está ao lado do '{os.path.basename(sys.argv[0])}' (Start.py) e contém uma instalação válida do Ant (com a subpasta 'bin' e o executável 'ant.bat' ou 'ant').\n"
+                f"ERRO: Pasta Ant do projeto ('{ant_home_path}') ou executável ('{ant_executable_full_path}') não encontrado DENTRO de '{project_source_dir}'.\n"
+                f"Verifique se o repositório Git '{os.path.basename(project_source_dir)}' contém uma pasta '{ant_folder_name_in_project}' com uma instalação válida do Ant (incluindo 'bin/{ant_executable_name}').\n"
+                f"Se a pasta 'Ant' não faz parte do repositório Git, ela deveria estar ao lado do 'Start.py' e o caminho para 'ant_home_path' deveria ser 'os.path.join(self.base_dir, \"{ant_folder_name_in_project}\")'.\n"
             )
-            self.after(0, lambda: self._compilation_finished(False, f"Ant embutido não encontrado em '{ant_folder_name}'. Verifique sua localização e estrutura."))
+            self.after(0, lambda: self._compilation_finished(False, f"Ant não encontrado dentro do projeto em '{ant_folder_name_in_project}'."))
             return
 
+        # O restante da configuração do ambiente Ant e execução permanece o mesmo
         ant_env = os.environ.copy()
         ant_env["ANT_HOME"] = ant_home_path
         ant_env["PATH"] = ant_bin_path + os.pathsep + ant_env.get("PATH", "")
+        # Potencialmente adicionar JAVA_HOME ao ant_env aqui, se necessário e detectado
         
-        self.append_to_manager_console_from_thread(f"Verificando Ant embutido com '{ant_executable_full_path} -version'...\n")
+        self.append_to_manager_console_from_thread(f"Verificando Ant do projeto com '{ant_executable_full_path} -version'...\n")
         try:
             result = subprocess.run(
                 [ant_executable_full_path, "-version"], capture_output=True, check=True, text=True,
@@ -637,34 +643,101 @@ class GameServerManager(tk.Tk):
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             )
             first_line_version = result.stdout.splitlines()[0] if result.stdout.splitlines() else "Não foi possível obter a versão."
-            self.append_to_manager_console_from_thread(f"INFO: Ant embutido funcional. ({first_line_version})\n")
+            self.append_to_manager_console_from_thread(f"INFO: Ant do projeto funcional. ({first_line_version})\n")
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             self.append_to_manager_console_from_thread(
-                f"ERRO: Falha ao executar o Ant embutido ('{ant_executable_full_path} -version').\n"
+                f"ERRO: Falha ao executar o Ant do projeto ('{ant_executable_full_path} -version').\n"
                 f"Causa: {e}\n"
-                f"Verifique a pasta '{ant_folder_name}' e se o Java (JDK) está corretamente configurado e acessível (JAVA_HOME pode ser necessário no ambiente).\n"
+                f"Verifique a pasta '{ant_folder_name_in_project}' dentro de '{project_source_dir}' e se o Java (JDK) está corretamente configurado e acessível.\n"
             )
-            self.after(0, lambda: self._compilation_finished(False, "Falha ao verificar Ant embutido."))
+            self.after(0, lambda: self._compilation_finished(False, "Falha ao verificar Ant do projeto."))
             return
-        self.append_to_manager_console_from_thread(f"--- Etapa 2: Ant embutido pronto. ---\n")
+        self.append_to_manager_console_from_thread(f"--- Etapa 2: Ant do projeto pronto. ---\n")
 
-        # --- ETAPA 3: COMPILAÇÃO COM ANT EMBUTIDO ---
-        self.append_to_manager_console_from_thread(f"\n--- Etapa 3: Compilando o projeto '{os.path.basename(project_source_dir)}' com Ant embutido ---\n")
-        ant_target = "dist" # Ou o target do seu projeto aCis
-        ant_compile_command = [ant_executable_full_path]
-        if ant_target: 
-            ant_compile_command.append(ant_target)
+        # --- ETAPA 3: COMPILAÇÃO COM ANT EMBUTIDO NO PROJETO ---
+        # (Esta parte permanece como na resposta anterior, usando ant_executable_full_path, project_source_dir e ant_env)
+        # ... (código da Etapa 3 - Compilação com Ant aqui) ...
+        # --- ETAPA 3: COMPILAÇÃO COM ANT EMBUTIDO NO PROJETO (DATAPACK E GAMESERVER) ---
+        self.append_to_manager_console_from_thread(f"\n--- Etapa 3: Compilando o projeto '{os.path.basename(project_source_dir)}' com Ant do projeto ---\n")
         
-        compile_success = self._run_command_and_stream_output(ant_compile_command, project_source_dir, custom_env=ant_env)
+        # Definir os nomes dos diretórios e targets do Ant (ajuste os targets se necessário)
+        datapack_module_name = "aCis_datapack"
+        gameserver_module_name = "aCis_gameserver"
+        
+        ant_target_default = "dist" # Target comum, pode ser "" para o target padrão do build.xml
 
-        if not compile_success:
-            self.append_to_manager_console_from_thread(f"ERRO: Falha ao compilar com Ant embutido. Verifique as mensagens acima.\n")
-            self.after(0, lambda: self._compilation_finished(False, f"Falha na compilação com Ant."))
-            return
+        # --- 3.1 Compilação do Datapack ---
+        datapack_build_dir = os.path.join(project_source_dir, datapack_module_name)
+        datapack_build_file = os.path.join(datapack_build_dir, "build.xml")
+        datapack_compile_success = False # Inicializa como falha
+
+        self.append_to_manager_console_from_thread(f"\n3.1. Compilando Datapack em: '{datapack_build_dir}'...\n")
+
+        if not os.path.isfile(datapack_build_file):
+            self.append_to_manager_console_from_thread(f"ERRO: Arquivo 'build.xml' não encontrado para o Datapack em '{datapack_build_dir}'. Pulando compilação do Datapack.\n")
+        else:
+            ant_compile_command_datapack = [ant_executable_full_path]
+            # Use um target específico para o datapack se houver, senão o default.
+            # Ex: ant_target_datapack = "build_datapack" ou deixe ant_target_default
+            if ant_target_default: 
+                ant_compile_command_datapack.append(ant_target_default) 
             
-        self.append_to_manager_console_from_thread(f"Compilação com Ant embutido ('{ant_target}') concluída com sucesso.\n")
-        self.append_to_manager_console_from_thread("--- Compilação do projeto finalizada com sucesso! ---\n")
-        self.after(0, lambda: self._compilation_finished(True, "Compilação finalizada com sucesso!"))
+            datapack_compile_success = self._run_command_and_stream_output(
+                ant_compile_command_datapack, 
+                datapack_build_dir,  # Define o diretório de trabalho para a pasta do datapack
+                custom_env=ant_env
+            )
+
+            if not datapack_compile_success:
+                self.append_to_manager_console_from_thread(f"ERRO: Falha ao compilar o Datapack. Verifique as mensagens acima.\n")
+            else:
+                self.append_to_manager_console_from_thread(f"Compilação do Datapack concluída {'com sucesso' if datapack_compile_success else 'com falha'}.\n")
+
+        # --- 3.2 Compilação do GameServer ---
+        gameserver_build_dir = os.path.join(project_source_dir, gameserver_module_name)
+        gameserver_build_file = os.path.join(gameserver_build_dir, "build.xml")
+        gameserver_compile_success = False # Inicializa como falha
+
+        self.append_to_manager_console_from_thread(f"\n3.2. Compilando GameServer em: '{gameserver_build_dir}'...\n")
+
+        if not os.path.isfile(gameserver_build_file):
+            self.append_to_manager_console_from_thread(f"ERRO: Arquivo 'build.xml' não encontrado para o GameServer em '{gameserver_build_dir}'. Pulando compilação do GameServer.\n")
+        else:
+            ant_compile_command_gameserver = [ant_executable_full_path]
+            # Use um target específico para o gameserver se houver, senão o default.
+            # Ex: ant_target_gameserver = "build_gameserver" ou deixe ant_target_default
+            if ant_target_default:
+                ant_compile_command_gameserver.append(ant_target_default)
+
+            gameserver_compile_success = self._run_command_and_stream_output(
+                ant_compile_command_gameserver, 
+                gameserver_build_dir, # Define o diretório de trabalho para a pasta do gameserver
+                custom_env=ant_env
+            )
+
+            if not gameserver_compile_success:
+                self.append_to_manager_console_from_thread(f"ERRO: Falha ao compilar o GameServer. Verifique as mensagens acima.\n")
+            else:
+                self.append_to_manager_console_from_thread(f"Compilação do GameServer concluída {'com sucesso' if gameserver_compile_success else 'com falha'}.\n")
+
+        # --- Finalização da Compilação ---
+        # Considera sucesso geral se AMBOS compilarem com sucesso.
+        # Ajuste esta lógica se, por exemplo, o datapack for opcional ou se você quiser
+        # que a falha de um não impeça o sucesso do outro em termos de mensagem final.
+        overall_success = datapack_compile_success and gameserver_compile_success
+        
+        if overall_success:
+            self.append_to_manager_console_from_thread("\n--- Compilação do projeto (Datapack e GameServer) finalizada com sucesso! ---\n")
+            self.after(0, lambda: self._compilation_finished(True, "Compilação do Datapack e GameServer finalizada com sucesso!"))
+        else:
+            error_parts = []
+            if not datapack_compile_success: error_parts.append("Datapack")
+            if not gameserver_compile_success: error_parts.append("GameServer")
+            final_error_message = f"Falha na compilação de: {', '.join(error_parts)}."
+            
+            self.append_to_manager_console_from_thread(f"\nERRO: {final_error_message} Verifique as mensagens no console para detalhes.\n")
+            self.after(0, lambda: self._compilation_finished(False, final_error_message))
+
 
         
 
