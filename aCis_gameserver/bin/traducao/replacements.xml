@@ -1,0 +1,18 @@
+<replacements>
+    <replacement key="%npc_name%">npc_name</replacement>
+    <replacement key="%npc_dialog_intro%">npc_dialog_intro</replacement>
+    <replacement key="%npc_dialog_competition%">npc_dialog_competition</replacement>
+    <replacement key="%npc_dialog_guide%">npc_dialog_guide</replacement>
+    <replacement key="%npc_dialog_what_is_seven_signs%">npc_dialog_what_is_seven_signs</replacement>
+    <replacement key="%npc_dialog_buy_record%">npc_dialog_buy_record</replacement>
+    <replacement key="%npc_dialog_participation%">npc_dialog_participation</replacement>
+    <replacement key="%npc_dialog_how_to_participate%">npc_dialog_how_to_participate</replacement>
+    <replacement key="%npc_dialog_participate_now%">npc_dialog_participate_now</replacement>
+    <replacement key="%npc_dialog_teleport%">npc_dialog_teleport</replacement>
+    <replacement key="%npc_dialog_seal_stones%">npc_dialog_seal_stones</replacement>
+    <replacement key="%npc_dialog_what_is_seal_stones%">npc_dialog_what_is_seal_stones</replacement>
+    <replacement key="%npc_dialog_contribute_seal_stones%">npc_dialog_contribute_seal_stones</replacement>
+    <replacement key="%npc_dialog_festival%">npc_dialog_festival</replacement>
+    <replacement key="%npc_dialog_what_is_festival%">npc_dialog_what_is_festival</replacement>
+    <replacement key="%npc_dialog_participate_festival%">npc_dialog_participate_festival</replacement>
+</replacements>
