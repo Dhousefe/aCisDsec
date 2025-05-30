@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, font as tkFont, filedialog
+from tkinter import scrolledtext, messagebox, font as tkFont, filedialog, ttk # Adicionado ttk aqui
 import subprocess
 import threading
 import os
@@ -468,12 +468,41 @@ class GameServerManager(tk.Tk):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.append_to_manager_console(f"[{timestamp}] Comando 'Compilar projeto (git)' acionado.\n")
         
-        # Desabilitar o botão para evitar múltiplos cliques durante a execução
-        self.compile_project_button.config(state=tk.DISABLED)
+        self.compile_project_button.config(state=tk.DISABLED) # Desabilita o botão
         
-        # Iniciar a compilação em uma nova thread para não bloquear a GUI
+        # MOSTRAR JANELA DE CARREGAMENTO MODAL
+        self._show_loading_modal(title="Compilando", message="Compilando o projeto...\nGit Pull e Ant em execução.\nPor favor, aguarde.")
+        
         compilation_thread = threading.Thread(target=self._perform_compilation_thread, daemon=True)
         compilation_thread.start()
+        
+    def _compilation_finished(self, success, message):
+        """ Chamado ao final do processo de compilação para atualizar a UI. """
+        
+        # Fecha a janela de loading modal, se existir
+        if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+            try:
+                if hasattr(self, 'progress_bar'): # Garante que progress_bar existe
+                    self.progress_bar.stop() # Para a animação da barra
+                self.loading_window.grab_release() # Libera o bloqueio modal
+                self.loading_window.destroy()
+            except tk.TclError:
+                pass # Janela pode já ter sido destruída
+            finally:
+                self.loading_window = None # Limpa a referência
+                if hasattr(self, 'progress_bar'):
+                    del self.progress_bar # Limpa referência da barra
+
+        self.compile_project_button.config(state=tk.NORMAL) # Reabilita o botão de compilação
+        
+        if success:
+            messagebox.showinfo("Compilação do Projeto", message)
+        else:
+            messagebox.showerror("Compilação do Projeto", f"Falha no processo: {message}\nVerifique o console para mais detalhes.")
+        
+        # Traz a janela principal para frente novamente
+        self.lift()
+        self.focus_force()
         
         
     def append_to_manager_console_from_thread(self, text):
@@ -528,6 +557,67 @@ class GameServerManager(tk.Tk):
         except Exception as e:
             self.append_to_manager_console_from_thread(f"ERRO CRÍTICO ao executar '{' '.join(command_list)}': {e}\n")
             return False
+            
+    def _show_loading_modal(self, title="Processando...", message="Por favor, aguarde..."):
+        """ Cria e exibe uma janela Toplevel modal com uma barra de progresso indeterminada. """
+        if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+            # Se já existir uma, feche-a para evitar múltiplas janelas de loading
+            try:
+                self.loading_window.destroy()
+            except tk.TclError:
+                pass # Pode já ter sido destruída
+
+        self.loading_window = tk.Toplevel(self)
+        self.loading_window.title(title)
+        self.loading_window.resizable(False, False)  # Impede redimensionamento
+        self.loading_window.transient(self)      # Mantém sobre a janela principal
+        
+        # Define um tamanho fixo para a janela modal
+        modal_width = 320
+        modal_height = 130
+
+        # Calcula a posição para centralizar na janela principal
+        # Garante que a janela principal já tenha suas dimensões definidas
+        self.update_idletasks() 
+        main_win_x = self.winfo_x()
+        main_win_y = self.winfo_y()
+        main_win_width = self.winfo_width()
+        main_win_height = self.winfo_height()
+
+        position_x = main_win_x + (main_win_width // 2) - (modal_width // 2)
+        position_y = main_win_y + (main_win_height // 2) - (modal_height // 2)
+        
+        self.loading_window.geometry(f"{modal_width}x{modal_height}+{position_x}+{position_y}")
+
+        # Impede que o usuário feche a janela de loading manualmente pelo botão 'X'
+        self.loading_window.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Estilo para os widgets ttk (opcional, mas pode melhorar a aparência)
+        style = ttk.Style(self.loading_window)
+        # Tenta usar um tema que pode ser mais moderno, se disponível
+        available_themes = style.theme_names()
+        if 'clam' in available_themes:
+            style.theme_use('clam')
+        elif 'alt' in available_themes:
+            style.theme_use('alt')
+        elif 'vista' in available_themes and sys.platform == "win32":
+            style.theme_use('vista')
+        
+        # Frame para organizar o conteúdo
+        content_frame = ttk.Frame(self.loading_window, padding="10 10 10 10")
+        content_frame.pack(expand=True, fill=tk.BOTH)
+
+        loading_label = ttk.Label(content_frame, text=message, justify=tk.CENTER, font=("Arial", 10))
+        loading_label.pack(pady=(10, 15))
+
+        # Barra de progresso indeterminada
+        self.progress_bar = ttk.Progressbar(content_frame, mode='indeterminate', length=modal_width - 60)
+        self.progress_bar.pack(pady=5)
+        self.progress_bar.start(15)  # Inicia a animação da barra (intervalo em ms)
+
+        self.loading_window.grab_set()  # Torna a janela modal, bloqueando interações com a principal
+        self.loading_window.focus_force() # Tenta focar na janela modal
+        self.update_idletasks() # Garante que a janela seja desenhada
             
 
     def _perform_compilation_thread(self):
@@ -744,14 +834,7 @@ class GameServerManager(tk.Tk):
         
             
 
-    def _compilation_finished(self, success, message):
-        """ Chamado ao final do processo de compilação para atualizar a UI. """
-        self.compile_project_button.config(state=tk.NORMAL) # Reabilita o botão
-        if success:
-            messagebox.showinfo("Compilação do Projeto", message)
-        else:
-            messagebox.showerror("Compilação do Projeto", f"Falha no processo: {message}\nVerifique o console para mais detalhes.")
-
+    
         
         #fim compile ==================================================
 
