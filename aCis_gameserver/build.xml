@@ -57,6 +57,12 @@
 				<exclude name="loginserver.properties" />
 			</fileset>
 		</copy>
+		<mkdir dir="${build.dist.game}/config/CustomMods" />
+		<copy todir="${build.dist.game}/config/CustomMods">
+			<fileset dir="CustomMods">
+				<include name="**/*.*" />
+			</fileset>
+		</copy>
 		<copy todir="${build.dist.login}/config">
 			<fileset dir="config">
 				<include name="banned_ips.properties" />
