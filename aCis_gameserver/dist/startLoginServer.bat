@@ -9,7 +9,7 @@ if not exist log mkdir log
 REM -------------------------------------
 REM Parametros padrao para o Login Server.
 REM A saida agora sera redirecionada para a pasta 'log'
-java -Xmx32m -cp ./libs/*; net.sf.l2j.loginserver.LoginServer > log\game_server.log 2>&1
+java -Xmx32m -cp ./libs/*; net.sf.l2j.loginserver.LoginServer > log\login_server.log 2>&1
 REM -------------------------------------
 
 REM O processo terminara aqui quando o comando 'java' for concluido ou encerrado.
