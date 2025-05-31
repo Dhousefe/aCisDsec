@@ -376,20 +376,20 @@ class GameServerManager(tk.Tk):
             # Se rodando como um script .py normal
             self.base_dir = os.path.dirname(os.path.abspath(__file__))
         
-        self.login_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "startLoginServer.bat")
-        self.game_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "startGameServer.bat")
+        self.login_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "login", "startLoginServer.bat")
+        self.game_bat_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "gameserver", "startGameServer.bat")
 
-        self.game_log_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "log", "game_server.log") # NOVO CAMINHO CORRETO
+        self.game_log_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "gameserver", "log", "game_server.log") # NOVO CAMINHO CORRETO
 
-        self.login_log_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "log", "login_server.log") # NOVO CAMINHO CORRETO
+        self.login_log_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "login", "log", "login_server.log") # NOVO CAMINHO CORRETO
 
         # Se seus logs têm nomes diferentes ou estão em outros locais, ajuste aqui.
         # self.login_log_path = os.path.join(self.base_dir, "login", "login_server.log") # Original
         # self.game_log_path = os.path.join(self.base_dir, "gameserver", "game_server.log") # Original
 
 
-        self.login_config_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "login", "config", "loginserver.properties")
-        self.game_config_path = os.path.join(self.base_dir, "aCisDsec_project", "aCis_datapack", "build", "gameserver", "config", "server.properties")
+        self.login_config_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "login", "config", "loginserver.properties")
+        self.game_config_path = os.path.join(self.base_dir, "aCisDsec_project", "Servidor Compilado", "gameserver", "config", "server.properties")
         
         self.log_viewer_windows = {}
         self.config_editor_windows = {}
@@ -571,6 +571,7 @@ class GameServerManager(tk.Tk):
         
         # --- Seção: Ações do Projeto (Dependências, Compilação, Preparação) ---
         # O LabelFrame pode continuar como "Ações do Projeto"
+        # --- Seção: Ações do Projeto ---
         project_actions_frame = tk.LabelFrame(self, text="Ações do Projeto", padx=10, pady=10)
         project_actions_frame.pack(fill="x", padx=10, pady=5)
 
@@ -590,11 +591,17 @@ class GameServerManager(tk.Tk):
                                                 font=("Arial", 10, "bold"), bg="dodgerblue", fg="white")
         self.compile_project_button.pack(side=tk.LEFT, padx=10)
 
-        # NOVO BOTÃO: Preparar inicialização
+        # Botão Preparar inicialização
         self.prepare_init_button = tk.Button(action_buttons_subframe, text="Preparar inicialização",
-                                              command=self.prepare_initialization, # Novo método de comando
-                                              font=("Arial", 10, "bold"), bg="seagreen", fg="white") # Estilo de exemplo
+                                              command=self.prepare_initialization, 
+                                              font=("Arial", 10, "bold"), bg="seagreen", fg="white")
         self.prepare_init_button.pack(side=tk.LEFT, padx=10)
+
+        # NOVO BOTÃO: Preparar MariaDB
+        self.prepare_mariadb_button = tk.Button(action_buttons_subframe, text="Preparar MariaDB",
+                                                 command=self.prepare_mariadb, # Novo método de comando
+                                                 font=("Arial", 10, "bold"), bg="sandybrown", fg="white") # Estilo de exemplo
+        self.prepare_mariadb_button.pack(side=tk.LEFT, padx=10)
         
         # Labels para mostrar o status das dependências (permanecem em project_actions_frame)
         self.java_status_label = tk.Label(project_actions_frame, text="Java (OpenJDK-21): Não Verificado", fg="gray")
@@ -626,6 +633,195 @@ class GameServerManager(tk.Tk):
         self.append_to_manager_console(f"Diretório base: {self.base_dir}\n")
         self.append_to_manager_console(f"Login BAT: {self.login_bat_path}\n")
         self.append_to_manager_console(f"Game BAT: {self.game_bat_path}\n")
+        
+        
+        
+    def prepare_mariadb(self):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.append_to_manager_console(f"[{timestamp}] Comando 'Preparar MariaDB' acionado.\n")
+
+        # !!! Verifique se project_source_dir está definido e existe !!!
+        # Este caminho é usado para localizar o aCisDsec.sql
+        project_source_dir = os.path.join(self.base_dir, "aCisDsec_project") 
+        if not os.path.isdir(project_source_dir):
+            messagebox.showerror("Erro de Configuração", 
+                                 f"O diretório do projeto fonte '{project_source_dir}' não foi encontrado.\n"
+                                 "Execute a etapa de 'Compilar projeto (git)' primeiro ou configure o caminho.")
+            self.append_to_manager_console(f"ERRO: Diretório do projeto '{project_source_dir}' não encontrado para 'Preparar MariaDB'.\n")
+            return
+
+        sql_script_relative_path = os.path.join("aCis_datapack", "tools", "aCisDsec.sql")
+        sql_script_full_path = os.path.join(project_source_dir, sql_script_relative_path)
+
+        if not os.path.isfile(sql_script_full_path):
+            messagebox.showerror("Erro de Arquivo", 
+                                 f"O script SQL 'aCisDsec.sql' não foi encontrado em:\n"
+                                 f"{os.path.join(project_source_dir, 'aCis_datapack', 'tools')}\n\n"
+                                 "Verifique se o projeto foi baixado e se o arquivo está no local esperado.")
+            self.append_to_manager_console(f"ERRO: Script SQL '{sql_script_full_path}' não encontrado.\n")
+            return
+
+        dialog = MariaDBConfigDialog(self)
+        db_config = dialog.result # result é preenchido quando o diálogo é fechado via OK/Cancelar
+
+        if db_config:
+            self.append_to_manager_console(f"Configurações MariaDB recebidas: Host={db_config['host']}, User={db_config['user']}, DB={db_config['db_name']}\n")
+            self.append_to_manager_console(f"Caminho mysql.exe: {db_config['mysql_exe_path']}\n")
+            self.append_to_manager_console(f"Script SQL a ser importado: {sql_script_full_path}\n")
+
+            self.prepare_mariadb_button.config(state=tk.DISABLED)
+            self._show_loading_modal(title="Preparando Banco de Dados", 
+                                     message=f"Importando script SQL para o banco '{db_config['db_name']}'...\nPor favor, aguarde.")
+            
+            # Iniciar a execução do script SQL em uma thread
+            db_thread = threading.Thread(
+                target=self._execute_mariadb_script_thread, 
+                args=(db_config, sql_script_full_path),
+                daemon=True
+            )
+            db_thread.start()
+        else:
+            self.append_to_manager_console("Preparação do MariaDB cancelada pelo usuário.\n")
+
+
+
+    def _execute_mariadb_script_thread(self, db_config, sql_file_path):
+        """
+        Cria o banco de dados se não existir e depois importa o script SQL,
+        tentando mostrar saída detalhada do mysql.exe.
+        Esta função roda em uma thread separada.
+        """
+        self.append_to_manager_console_from_thread(f"Iniciando preparação do banco de dados: {db_config['db_name']}\n")
+
+        mysql_exe = db_config['mysql_exe_path']
+        host = db_config['host']
+        user = db_config['user']
+        password = db_config['password'] 
+        db_name = db_config['db_name']
+
+        process_encoding = 'oem' if sys.platform == "win32" else 'utf-8'
+        overall_success_flag = False 
+        output_message = f"Falha na preparação do banco de dados '{db_name}'."
+
+        # --- ETAPA 1: CRIAR O BANCO DE DADOS SE NÃO EXISTIR ---
+        # (Esta parte permanece como na resposta anterior, pois é rápida e não precisa de streaming complexo)
+        self.append_to_manager_console_from_thread(f"Tentando criar o banco de dados '{db_name}' (se não existir)...\n")
+        create_db_command = [mysql_exe, "-h", host, "-u", user]
+        if password:
+            create_db_command.append(f"-p{password}")
+        sql_create_db_statement = f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        try:
+            process_create_db = subprocess.Popen(
+                create_db_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding=process_encoding, errors='replace',
+                cwd=os.path.dirname(mysql_exe),
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            )
+            stdout_cdb, stderr_cdb = process_create_db.communicate(input=sql_create_db_statement, timeout=60)
+            if stdout_cdb: self.append_to_manager_console_from_thread(f"Saída (Criar BD) MySQL:\n{stdout_cdb.strip()}\n")
+            if stderr_cdb: self.append_to_manager_console_from_thread(f"Alerta/Erro (Criar BD) MySQL:\n{stderr_cdb.strip()}\n")
+            if process_create_db.returncode != 0:
+                self.append_to_manager_console_from_thread(f"ERRO: Falha ao criar/assegurar BD '{db_name}'. Código: {process_create_db.returncode}.\n")
+                output_message = f"Falha ao criar/verificar BD '{db_name}'. {stderr_cdb.strip()}"
+                self.after(0, lambda: self._preparation_finished(False, output_message))
+                return
+            else:
+                self.append_to_manager_console_from_thread(f"Banco de dados '{db_name}' verificado/criado.\n")
+        except Exception as e_create_db: # Inclui TimeoutExpired de communicate
+            self.append_to_manager_console_from_thread(f"ERRO EXCEPCIONAL ao criar BD '{db_name}': {e_create_db}\n")
+            output_message = f"Exceção ao criar BD '{db_name}': {e_create_db}"
+            self.after(0, lambda: self._preparation_finished(False, output_message))
+            return
+
+        # --- ETAPA 2: IMPORTAR O SCRIPT SQL PRINCIPAL COM SAÍDA DETALHADA ---
+        self.append_to_manager_console_from_thread(f"\nIniciando importação do script SQL '{os.path.basename(sql_file_path)}' para '{db_name}' (com detalhes)...\n")
+        
+        import_sql_command = [mysql_exe, "-h", host, "-u", user]
+        if password:
+            import_sql_command.append(f"-p{password}")
+        import_sql_command.extend(["-D", db_name])
+        # Adicionar flags de verbosidade. '-v' repetido aumenta a verbosidade.
+        import_sql_command.extend(["-v"]) # ou import_sql_command.append("--verbose") 
+
+        try:
+            # Esconde a senha do log do comando
+            logged_command = list(import_sql_command) # Cria uma cópia
+            if password:
+                try:
+                    idx = logged_command.index(f"-p{password}")
+                    logged_command[idx] = "-p********"
+                except ValueError: pass # Se -p não estiver no formato esperado, não substitui
+
+            self.append_to_manager_console_from_thread(f"Executando: {' '.join(logged_command)} < {os.path.basename(sql_file_path)}\n")
+            
+            with open(sql_file_path, 'r', encoding='utf-8', errors='replace') as sql_file_handle:
+                process_import_sql = subprocess.Popen(
+                    import_sql_command,
+                    stdin=sql_file_handle,    # Alimenta o script SQL ao mysql.exe
+                    stdout=subprocess.PIPE,   # Captura a saída padrão para streaming
+                    stderr=subprocess.PIPE,   # Captura a saída de erro para streaming
+                    text=True, 
+                    encoding=process_encoding,
+                    errors='replace',
+                    bufsize=1,                # Buffer por linha para streaming
+                    universal_newlines=True,  # Normaliza newlines
+                    cwd=os.path.dirname(mysql_exe),
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                )
+
+                # Função para ler e encaminhar um stream (stdout ou stderr)
+                def stream_pipe_to_console(pipe, pipe_name_prefix):
+                    try:
+                        with pipe: # Garante que o pipe seja fechado ao sair
+                            for line in iter(pipe.readline, ''): # Lê linha por linha até o fim
+                                self.append_to_manager_console_from_thread(f"{pipe_name_prefix}: {line.rstrip()}\n")
+                    except Exception as e_pipe:
+                        self.append_to_manager_console_from_thread(f"Erro lendo {pipe_name_prefix} do mysql.exe: {e_pipe}\n")
+
+                # Cria e inicia threads para ler stdout e stderr em paralelo
+                stdout_reader_thread = threading.Thread(target=stream_pipe_to_console, args=(process_import_sql.stdout, "MySQL-Info"), daemon=True)
+                stderr_reader_thread = threading.Thread(target=stream_pipe_to_console, args=(process_import_sql.stderr, "MySQL-Erro"), daemon=True)
+                
+                stdout_reader_thread.start()
+                stderr_reader_thread.start()
+
+                # Espera o processo mysql.exe terminar, com timeout
+                # Um timeout longo é necessário para importações grandes
+                process_timeout_seconds = 1800 # 30 minutos, ajuste conforme necessário
+                try:
+                    process_import_sql.wait(timeout=process_timeout_seconds)
+                except subprocess.TimeoutExpired:
+                    self.append_to_manager_console_from_thread(f"ERRO: Timeout ({process_timeout_seconds}s) ao importar script SQL. Processo será finalizado.\n")
+                    process_import_sql.kill() # Tenta finalizar o processo
+                    # Dê um tempinho para as threads de leitura pegarem as últimas mensagens após o kill
+                    stdout_reader_thread.join(timeout=2)
+                    stderr_reader_thread.join(timeout=2)
+                    output_message = "Timeout durante a importação do SQL."
+                    self.after(0, lambda: self._preparation_finished(False, output_message))
+                    return
+
+                # Garante que as threads de leitura terminaram
+                stdout_reader_thread.join(timeout=5)
+                stderr_reader_thread.join(timeout=5)
+
+                if process_import_sql.returncode == 0:
+                    self.append_to_manager_console_from_thread(f"Script SQL '{os.path.basename(sql_file_path)}' importado com sucesso para o banco '{db_name}'.\n")
+                    overall_success_flag = True
+                    output_message = f"Banco de dados '{db_name}' preparado com sucesso!"
+                else:
+                    self.append_to_manager_console_from_thread(f"ERRO: Falha ao importar script SQL. Código de saída: {process_import_sql.returncode}.\nVerifique as mensagens de erro do MySQL acima.\n")
+                    output_message = f"Falha ao importar SQL para '{db_name}'. Código: {process_import_sql.returncode}."
+        
+        except FileNotFoundError: 
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO: Arquivo SQL '{sql_file_path}' não encontrado.\n")
+            output_message = f"Arquivo SQL '{os.path.basename(sql_file_path)}' não encontrado."
+        except Exception as e_import_sql:
+            self.append_to_manager_console_from_thread(f"ERRO CRÍTICO ao executar o script SQL '{os.path.basename(sql_file_path)}': {e_import_sql}\n")
+            output_message = f"Erro durante importação do SQL: {e_import_sql}"
+
+        self.after(0, lambda: self._preparation_finished(overall_success_flag, output_message))
+
+
         
     def prepare_initialization(self):
         """
@@ -1225,24 +1421,65 @@ class GameServerManager(tk.Tk):
         
         
     def compile_project_git(self):
-        if not self.is_git_available:
-            messagebox.showerror("Git Não Disponível", 
-                                 "O Git não foi encontrado no seu sistema ou não está acessível.\n"
-                                 "A funcionalidade de compilar o projeto via Git está desabilitada.\n\n"
-                                 "Por favor, instale o Git (veja https://git-scm.com/downloads) "
-                                 "e certifique-se de que ele foi adicionado ao PATH do sistema. "
-                                 "Pode ser necessário reiniciar este aplicativo após a instalação do Git.")
-            self.append_to_manager_console("Tentativa de compilação via Git falhou: Git não disponível.\n")
-            return
-
-        # Se o Git estiver disponível, o restante do método continua como antes:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.append_to_manager_console(f"[{timestamp}] Comando 'Compilar projeto (git)' acionado.\n")
+
+        # --- ETAPA PRELIMINAR: VERIFICAR E CONFIGURAR JAVA_HOME ---
+        self.append_to_manager_console("Verificando configuração do JAVA_HOME...\n")
+        current_java_home_env = os.environ.get("JAVA_HOME")
+        resolved_java_home_for_ant = current_java_home_env
         
+        # Valida o JAVA_HOME do ambiente (se existir)
+        is_current_java_home_valid = False
+        if current_java_home_env:
+            # Reutiliza a lógica de validação do diálogo
+            temp_dialog_for_validation = JavaHomeDialog(self, current_java_home=current_java_home_env)
+            is_current_java_home_valid = temp_dialog_for_validation._is_valid_jdk_path(current_java_home_env)
+            temp_dialog_for_validation.destroy() # Destroi o diálogo temporário usado só para validação
+
+        if current_java_home_env and is_current_java_home_valid:
+            self.append_to_manager_console(f"INFO: JAVA_HOME encontrado no ambiente do sistema e parece válido: {current_java_home_env}\n")
+            # Pergunta se o usuário quer usar este ou fornecer um novo
+            use_system_java_home = messagebox.askyesno(
+                "JAVA_HOME Encontrado",
+                f"JAVA_HOME detectado no sistema:\n{current_java_home_env}\n\nEste parece ser um JDK válido. Deseja usá-lo para a compilação?",
+                parent=self
+            )
+            if not use_system_java_home:
+                resolved_java_home_for_ant = None # Força a abertura do diálogo de input
+        else:
+            if current_java_home_env: # Existia mas não era válido
+                 self.append_to_manager_console(f"AVISO: JAVA_HOME do sistema ('{current_java_home_env}') parece ser inválido ou incompleto.\n")
+            else: # Não existia
+                 self.append_to_manager_console("INFO: JAVA_HOME não encontrado no ambiente do sistema.\n")
+            resolved_java_home_for_ant = None # Força a abertura do diálogo
+
+        if not resolved_java_home_for_ant: # Se não usamos o do sistema ou ele era inválido/ausente
+            self.append_to_manager_console("Solicitando ao usuário para confirmar/fornecer o caminho do JAVA_HOME...\n")
+            # O padrão C:\Program Files\Java\jdk-21 é passado para o diálogo
+            java_home_dialog = JavaHomeDialog(self, current_java_home=current_java_home_env, default_jdk_path=r"C:\Program Files\Java\jdk-21")
+            user_provided_java_home = java_home_dialog.result_path
+
+            if user_provided_java_home:
+                resolved_java_home_for_ant = user_provided_java_home
+                self.append_to_manager_console(f"INFO: Usando JAVA_HOME fornecido/confirmado pelo usuário: {resolved_java_home_for_ant}\n")
+            else:
+                self.append_to_manager_console("ERRO: Caminho do JAVA_HOME não fornecido ou diálogo cancelado. Compilação abortada.\n")
+                messagebox.showerror("JAVA_HOME Requerido", "A compilação não pode prosseguir sem um caminho válido para o JAVA_HOME (JDK).")
+                return # Aborta a compilação
+
+        # Se chegou aqui, resolved_java_home_for_ant contém um caminho válido para o JDK
+        
+        # Prossegue com a lógica de compilação existente
         self.compile_project_button.config(state=tk.DISABLED)
         self._show_loading_modal(title="Compilando", message="Compilando o projeto...\nGit Pull e Ant em execução.\nPor favor, aguarde.")
         
-        compilation_thread = threading.Thread(target=self._perform_compilation_thread, daemon=True)
+        # Passa o JAVA_HOME resolvido para a thread de compilação
+        compilation_thread = threading.Thread(
+            target=self._perform_compilation_thread, 
+            args=(resolved_java_home_for_ant,), # Passa como argumento
+            daemon=True
+        )
         compilation_thread.start()
         
     def _compilation_finished(self, success, message):
@@ -1389,17 +1626,20 @@ class GameServerManager(tk.Tk):
         self.update_idletasks() # Garante que a janela seja desenhada
             
 
-    def _perform_compilation_thread(self):
-        # !!! IMPORTANTE: CONFIGURE ESTE CAMINHO PARA O CÓDIGO FONTE DO PROJETO !!!
+    def _perform_compilation_thread(self, resolved_java_home): # Novo argumento
+        """
+        Executa as etapas de clone/pull do Git e compilação com Ant (embutido) em uma thread separada.
+        Usa o JAVA_HOME resolvido.
+        """
+        # ... (definição de project_source_dir, git_repo_url, git_branch como antes) ...
         project_source_dir = os.path.join(self.base_dir, "aCisDsec_project") 
-        # Ex: r"E:\aCisDsec\pasta\aCisDsec_source" ou onde quer que o código do aCisDsec deva ficar.
-
         git_repo_url = "https://github.com/Dhousefe/aCisDsec.git"
         git_branch = "master" 
 
         self.append_to_manager_console_from_thread(f"\n--- Iniciando processo de compilação do projeto ---\n")
+        self.append_to_manager_console_from_thread(f"Usando JAVA_HOME: {resolved_java_home}\n") # Log do JAVA_HOME a ser usado
         self.append_to_manager_console_from_thread(f"Diretório do projeto alvo: {project_source_dir}\n")
-        self.append_to_manager_console_from_thread(f"Repositório Git: {git_repo_url}, Branch: {git_branch}\n")
+        # ...
 
         # --- ETAPA 1: OPERAÇÕES GIT (CLONE OU PULL) ---
         # (Esta parte permanece como na resposta anterior - verifica Git, clona ou faz pull)
@@ -1467,57 +1707,42 @@ class GameServerManager(tk.Tk):
 
 
         # --- ETAPA 2: CONFIGURAÇÃO E VERIFICAÇÃO DO ANT (DENTRO DO PROJETO GIT) ---
+        # --- ETAPA 2: CONFIGURAÇÃO E VERIFICAÇÃO DO ANT (DENTRO DO PROJETO GIT) ---
         self.append_to_manager_console_from_thread(f"\n--- Etapa 2: Configurando e verificando Ant (embutido no projeto Git) ---\n")
-        
-        ant_folder_name_in_project = "Ant"  # Nome da pasta "Ant" DENTRO do seu aCisDsec_project
-        # *** CORREÇÃO PRINCIPAL AQUI: ant_home_path é relativo a project_source_dir ***
+        ant_folder_name_in_project = "Ant"
         ant_home_path = os.path.join(project_source_dir, ant_folder_name_in_project) 
-        
         ant_bin_path = os.path.join(ant_home_path, "bin")
         ant_executable_name = "ant.bat" if sys.platform == "win32" else "ant"
         ant_executable_full_path = os.path.join(ant_bin_path, ant_executable_name)
 
         self.append_to_manager_console_from_thread(f"Procurando Ant do projeto em: {ant_home_path}\n")
 
-        if not os.path.isdir(ant_home_path) or not os.path.isfile(ant_executable_full_path):
-            self.append_to_manager_console_from_thread(
-                f"ERRO: Pasta Ant do projeto ('{ant_home_path}') ou executável ('{ant_executable_full_path}') não encontrado DENTRO de '{project_source_dir}'.\n"
-                f"Verifique se o repositório Git '{os.path.basename(project_source_dir)}' contém uma pasta '{ant_folder_name_in_project}' com uma instalação válida do Ant (incluindo 'bin/{ant_executable_name}').\n"
-                f"Se a pasta 'Ant' não faz parte do repositório Git, ela deveria estar ao lado do 'Start.py' e o caminho para 'ant_home_path' deveria ser 'os.path.join(self.base_dir, \"{ant_folder_name_in_project}\")'.\n"
-            )
-            self.after(0, lambda: self._compilation_finished(False, f"Ant não encontrado dentro do projeto em '{ant_folder_name_in_project}'."))
+        if not (os.path.isdir(ant_home_path) and os.path.isfile(ant_executable_full_path)):
+            self.append_to_manager_console_from_thread(f"ERRO: Ant do projeto não encontrado em '{ant_home_path}'.\n")
+            self.after(0, lambda: self._compilation_finished(False, "Ant não encontrado dentro do projeto."))
             return
-
-        # O restante da configuração do ambiente Ant e execução permanece o mesmo
+        
+        # Cria um ambiente customizado para o Ant
         ant_env = os.environ.copy()
         ant_env["ANT_HOME"] = ant_home_path
         ant_env["PATH"] = ant_bin_path + os.pathsep + ant_env.get("PATH", "")
-        # Potencialmente adicionar JAVA_HOME ao ant_env aqui, se necessário e detectado
-        system_java_home = os.environ.get("JAVA_HOME")
-        if system_java_home:
-            ant_env["JAVA_HOME"] = system_java_home
-            self.append_to_manager_console_from_thread(f"DEBUG: Usando JAVA_HOME do sistema para Ant: {system_java_home}\n")
-        else:
-            self.append_to_manager_console_from_thread("DEBUG: JAVA_HOME não encontrado no ambiente do sistema.\n")
+        ant_env["JAVA_HOME"] = resolved_java_home # *** USA O JAVA_HOME RESOLVIDO ***
         
-        self.append_to_manager_console_from_thread(f"Verificando Ant do projeto com '{ant_executable_full_path} -version'...\n")
+        self.append_to_manager_console_from_thread(f"Verificando Ant do projeto com '{ant_executable_full_path} -version' (JAVA_HOME='{ant_env['JAVA_HOME']}')...\n")
         try:
             result = subprocess.run(
                 [ant_executable_full_path, "-version"], capture_output=True, check=True, text=True,
-                env=ant_env, encoding='oem' if sys.platform == "win32" else 'utf-8', errors='replace',
+                env=ant_env, # Passa o ambiente com JAVA_HOME e ANT_HOME
+                encoding='oem' if sys.platform == "win32" else 'utf-8', errors='replace',
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             )
-            first_line_version = result.stdout.splitlines()[0] if result.stdout.splitlines() else "Não foi possível obter a versão."
+            first_line_version = result.stdout.splitlines()[0] if result.stdout.splitlines() else "N/A"
             self.append_to_manager_console_from_thread(f"INFO: Ant do projeto funcional. ({first_line_version})\n")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            self.append_to_manager_console_from_thread(
-                f"ERRO: Falha ao executar o Ant do projeto ('{ant_executable_full_path} -version').\n"
-                f"Causa: {e}\n"
-                f"Verifique a pasta '{ant_folder_name_in_project}' dentro de '{project_source_dir}' e se o Java (JDK) está corretamente configurado e acessível.\n"
-            )
+        except Exception as e:
+            self.append_to_manager_console_from_thread(f"ERRO: Falha ao executar o Ant do projeto ('{ant_executable_full_path} -version'). Causa: {e}\nVerifique as configurações de ANT_HOME e JAVA_HOME e a integridade da pasta Ant.\n")
             self.after(0, lambda: self._compilation_finished(False, "Falha ao verificar Ant do projeto."))
             return
-        self.append_to_manager_console_from_thread(f"--- Etapa 2: Ant do projeto pronto. ---\n")
+        # ...
 
         # --- ETAPA 3: COMPILAÇÃO COM ANT EMBUTIDO NO PROJETO ---
         # (Esta parte permanece como na resposta anterior, usando ant_executable_full_path, project_source_dir e ant_env)
@@ -1541,7 +1766,7 @@ class GameServerManager(tk.Tk):
         if not os.path.isfile(datapack_build_file):
             self.append_to_manager_console_from_thread(f"ERRO: Arquivo 'build.xml' não encontrado para o Datapack em '{datapack_build_dir}'. Pulando compilação do Datapack.\n")
         else:
-            ant_compile_command_datapack = [ant_executable_full_path]
+            ant_compile_command_datapack = [ant_executable_full_path, "-v"]
             # Use um target específico para o datapack se houver, senão o default.
             # Ex: ant_target_datapack = "build_datapack" ou deixe ant_target_default
             if ant_target_default: 
@@ -2278,6 +2503,187 @@ class GameServerManager(tk.Tk):
             self.config_editor_windows[server_name] = None
         
         self.append_to_manager_console("Gerenciador encerrado.\n")
+        self.destroy()
+        
+class MariaDBConfigDialog(tk.Toplevel):
+    def __init__(self, parent, default_ip="localhost", default_user="root", db_name="aCisDsec"):
+        super().__init__(parent)
+        self.transient(parent) # Mantém sobre a janela principal
+        self.title("Configurar Conexão MariaDB/MySQL")
+        self.parent = parent
+        self.result = None # Para armazenar os dados inseridos
+
+        self.default_mysql_bin_path = r"C:\Program Files\MariaDB 10.5\bin" # Padrão
+
+        frame = ttk.Frame(self, padding="10 10 10 10")
+        frame.pack(expand=True, fill=tk.BOTH)
+
+        ttk.Label(frame, text=f"Será criado/utilizado o banco de dados: '{db_name}'.").grid(row=0, column=0, columnspan=2, pady=5)
+
+        ttk.Label(frame, text="IP do Servidor MySQL/MariaDB:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.ip_entry = ttk.Entry(frame, width=40)
+        self.ip_entry.insert(0, default_ip)
+        self.ip_entry.grid(row=1, column=1, pady=2, sticky=tk.EW)
+
+        ttk.Label(frame, text="Usuário do MySQL/MariaDB:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.user_entry = ttk.Entry(frame, width=40)
+        self.user_entry.insert(0, default_user)
+        self.user_entry.grid(row=2, column=1, pady=2, sticky=tk.EW)
+
+        ttk.Label(frame, text="Senha do Usuário:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.pass_entry = ttk.Entry(frame, width=40, show="*")
+        self.pass_entry.grid(row=3, column=1, pady=2, sticky=tk.EW)
+        
+        ttk.Label(frame, text="Caminho para 'bin' do MySQL/MariaDB:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        self.mysql_bin_path_entry = ttk.Entry(frame, width=40)
+        self.mysql_bin_path_entry.insert(0, self.default_mysql_bin_path)
+        self.mysql_bin_path_entry.grid(row=4, column=1, pady=2, sticky=tk.EW)
+        
+        browse_button = ttk.Button(frame, text="Procurar...", command=self._browse_mysql_bin_path)
+        browse_button.grid(row=4, column=2, padx=(5,0), pady=2)
+
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=5, column=0, columnspan=3, pady=10) # Alterado columnspan para 3
+
+        self.ok_button = ttk.Button(button_frame, text="Iniciar Procedimento", command=self._on_ok)
+        self.ok_button.pack(side=tk.LEFT, padx=5)
+        self.cancel_button = ttk.Button(button_frame, text="Cancelar", command=self._on_cancel)
+        self.cancel_button.pack(side=tk.LEFT, padx=5)
+
+        self.grab_set() # Torna a janela modal
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel) # Lidar com fechamento pelo 'X'
+        
+        self.ip_entry.focus_set() # Foco no primeiro campo
+        self.wait_window(self) # Espera até que esta janela seja fechada
+
+    def _browse_mysql_bin_path(self):
+        path = filedialog.askdirectory(initialdir=self.mysql_bin_path_entry.get() or self.default_mysql_bin_path,
+                                        title="Selecione a pasta 'bin' do MariaDB/MySQL")
+        if path:
+            self.mysql_bin_path_entry.delete(0, tk.END)
+            self.mysql_bin_path_entry.insert(0, path)
+
+    def _on_ok(self, event=None):
+        db_ip = self.ip_entry.get().strip()
+        db_user = self.user_entry.get().strip()
+        db_pass = self.pass_entry.get() # Senha pode ser vazia intencionalmente
+        mysql_bin = self.mysql_bin_path_entry.get().strip()
+
+        if not db_ip:
+            messagebox.showerror("Entrada Inválida", "O IP do servidor não pode estar vazio.", parent=self)
+            return
+        if not db_user:
+            messagebox.showerror("Entrada Inválida", "O usuário do banco de dados não pode estar vazio.", parent=self)
+            return
+        if not mysql_bin or not os.path.isdir(mysql_bin):
+            messagebox.showerror("Entrada Inválida", "O caminho para a pasta 'bin' do MySQL/MariaDB é inválido ou não existe.", parent=self)
+            return
+        
+        mysql_exe = "mysql.exe" if sys.platform == "win32" else "mysql"
+        mysql_exe_path_full = os.path.join(mysql_bin, mysql_exe)
+        if not os.path.isfile(mysql_exe_path_full):
+            messagebox.showerror("Entrada Inválida", f"O executável '{mysql_exe}' não foi encontrado em '{mysql_bin}'.\nVerifique o caminho.", parent=self)
+            return
+
+        self.result = {
+            "host": db_ip,
+            "user": db_user,
+            "password": db_pass,
+            "db_name": "aCisDsec", # Fixo, conforme solicitado
+            "mysql_exe_path": mysql_exe_path_full
+        }
+        self.destroy()
+
+    def _on_cancel(self, event=None):
+        self.result = None
+        self.destroy()
+        
+        
+class JavaHomeDialog(tk.Toplevel):
+    def __init__(self, parent, current_java_home=None, default_jdk_path=r"C:\Program Files\Java\jdk-21"):
+        super().__init__(parent)
+        self.transient(parent)
+        self.title("Configurar JAVA_HOME")
+        self.parent = parent
+        self.result_path = None  # Para armazenar o caminho confirmado
+
+        # Define um caminho inicial para o Entry: o JAVA_HOME atual, o padrão, ou vazio
+        initial_path_to_show = current_java_home or default_jdk_path or ""
+
+        frame = ttk.Frame(self, padding="10 10 10 10")
+        frame.pack(expand=True, fill=tk.BOTH)
+
+        ttk.Label(frame, text="O Apache Ant requer o JAVA_HOME (caminho do JDK) para compilar o projeto.").grid(row=0, column=0, columnspan=3, pady=(0,10), sticky=tk.W)
+        
+        ttk.Label(frame, text="Caminho do JDK (JAVA_HOME):").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.path_entry = ttk.Entry(frame, width=50)
+        self.path_entry.insert(0, initial_path_to_show)
+        self.path_entry.grid(row=1, column=1, pady=5, sticky=tk.EW)
+
+        browse_button = ttk.Button(frame, text="Procurar...", command=self._browse_jdk_path)
+        browse_button.grid(row=1, column=2, padx=(5,0), pady=5)
+
+        # Mensagem sobre o JAVA_HOME atual do sistema (se existir)
+        if current_java_home:
+            ttk.Label(frame, text=f"JAVA_HOME atual do sistema: {current_java_home}", wraplength=400).grid(row=2, column=0, columnspan=3, pady=(5,0), sticky=tk.W)
+        else:
+            ttk.Label(frame, text="JAVA_HOME não detectado no ambiente do sistema.", foreground="orange").grid(row=2, column=0, columnspan=3, pady=(5,0), sticky=tk.W)
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=3, column=0, columnspan=3, pady=(15,5))
+
+        self.ok_button = ttk.Button(button_frame, text="Confirmar Caminho", command=self._on_confirm)
+        self.ok_button.pack(side=tk.LEFT, padx=5)
+        self.cancel_button = ttk.Button(button_frame, text="Cancelar Compilação", command=self._on_cancel)
+        self.cancel_button.pack(side=tk.LEFT, padx=5)
+
+        self.grab_set() # Modal
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self.path_entry.focus_set()
+        self.wait_window(self)
+
+    def _browse_jdk_path(self):
+        # Tenta usar o caminho no Entry como diretório inicial, ou o diretório pai do padrão
+        initial_dir_browse = self.path_entry.get()
+        if not os.path.isdir(initial_dir_browse): # Se não for um diretório válido
+            initial_dir_browse = os.path.dirname(r"C:\Program Files\Java") # Um local comum
+            if not os.path.isdir(initial_dir_browse): # Fallback
+                 initial_dir_browse = "/"
+
+
+        path = filedialog.askdirectory(initialdir=initial_dir_browse,
+                                        title="Selecione o diretório raiz do JDK (ex: jdk-21)")
+        if path:
+            self.path_entry.delete(0, tk.END)
+            self.path_entry.insert(0, path)
+
+    def _is_valid_jdk_path(self, path_to_check):
+        if not path_to_check or not os.path.isdir(path_to_check):
+            return False
+        # Verifica a existência de arquivos/pastas chave do JDK
+        has_bin = os.path.isdir(os.path.join(path_to_check, "bin"))
+        has_javac_win = os.path.isfile(os.path.join(path_to_check, "bin", "javac.exe"))
+        has_javac_nix = os.path.isfile(os.path.join(path_to_check, "bin", "javac"))
+        return has_bin and (has_javac_win or has_javac_nix)
+
+    def _on_confirm(self, event=None):
+        chosen_path = self.path_entry.get().strip()
+        if not chosen_path:
+            messagebox.showwarning("Caminho Vazio", "O caminho do JAVA_HOME não pode estar vazio.", parent=self)
+            return
+        
+        if not self._is_valid_jdk_path(chosen_path):
+            messagebox.showerror("Caminho Inválido", 
+                                 f"O caminho '{chosen_path}' não parece ser um diretório JDK válido.\n"
+                                 "Ele deve conter uma subpasta 'bin' com o compilador 'javac'.", parent=self)
+            return
+
+        self.result_path = chosen_path
+        self.destroy()
+
+    def _on_cancel(self, event=None):
+        self.result_path = None # Indica cancelamento ou falha em obter um caminho válido
         self.destroy()
 
 
