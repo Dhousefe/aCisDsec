@@ -63,10 +63,13 @@ public class Cancel implements ISkillHandler
 			
 			for (AbstractEffect effect : list)
 			{
-				// Don't cancel toggles or debuffs.
-				if (effect.getSkill().isToggle() || effect.getSkill().isDebuff())
+				if (effect.getSkill().isToggle())
 					continue;
-				
+
+				// Ignora debuffs, exceto Touch of Death (ID 342)
+				if (effect.getSkill().isDebuff() && effect.getSkill().getId() != 342)
+					continue;
+
 				// Don't cancel specific EffectTypes.
 				if (EffectType.isntCancellable(effect.getEffectType()))
 					continue;
