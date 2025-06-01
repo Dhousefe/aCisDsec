@@ -1052,6 +1052,11 @@
 		<set name="castRange" val="600"/>
 		<set name="effectRange" val="1100"/>
 		<set name="maxNegated" val="5" />
+		<for>
+			<effect name="Debuff" time="10" val="0" effectType="DEBUFF" stackOrder="3" stackType="resist_debuff_dispel">
+				<addMul stat="cancelVuln" val="1" />
+			</effect>
+		</for>
 	</skill>
 	<skill id="1059" levels="3" name="Greater Empower" enchantLevels1="30" enchantLevels2="30" >
 		<table name="#enchantMagicLvl"> 76 76 76 77 77 77 78 78 78 79 79 79 80 80 80 81 81 81 82 82 82 83 83 83 84 84 84 85 85 85 </table>

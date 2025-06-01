@@ -945,6 +945,11 @@
 		<set name="isMagic" val="true"/>
 		<set name="operateType" val="ACTIVE"/>
 		<set name="maxNegated" val="-1" />
+		<for>
+			<effect name="Debuff" time="10" val="0" effectType="DEBUFF" stackOrder="3" stackType="resist_debuff_dispel">
+				<addMul stat="cancelVuln" val="1" />
+			</effect>
+		</for>
 	</skill>
 	<skill id="1345" levels="1" name="Mass Mage Bane" >
 		<set name="mpInitialConsume" val="27"/>
@@ -959,6 +964,11 @@
 		<set name="isMagic" val="true"/>
 		<set name="operateType" val="ACTIVE"/>
 		<set name="maxNegated" val="-1" />
+		<for>
+			<effect name="Debuff" time="10" val="0" effectType="DEBUFF" stackOrder="3" stackType="resist_debuff_dispel">
+				<addMul stat="cancelVuln" val="1" />
+			</effect>
+		</for>
 	</skill>
 	<skill id="1346" levels="1" name="Warrior Servitor" >
 		<set name="magicLvl" val="77"/>
@@ -1089,6 +1099,11 @@
 		<set name="castRange" val="600"/>
 		<set name="effectRange" val="1100"/>
 		<set name="maxNegated" val="-1" />
+		<for>
+			<effect name="Debuff" time="10" val="0" effectType="DEBUFF" stackOrder="3" stackType="resist_debuff_dispel">
+				<addMul stat="cancelVuln" val="1" />
+			</effect>
+		</for>
 	</skill>
 	<skill id="1351" levels="1" name="Mage Bane" >
 		<set name="mpInitialConsume" val="20"/>
@@ -1104,6 +1119,11 @@
 		<set name="castRange" val="600"/>
 		<set name="effectRange" val="1100"/>
 		<set name="maxNegated" val="-1" />
+		<for>
+			<effect name="Debuff" time="10" val="0" effectType="DEBUFF" stackOrder="3" stackType="resist_debuff_dispel">
+				<addMul stat="cancelVuln" val="1" />
+			</effect>
+		</for>
 	</skill>
 	<skill id="1352" levels="1" name="Elemental Protection" >
 		<set name="magicLvl" val="76"/>

@@ -937,9 +937,9 @@
 		<set name="nextActionAttack" val="true" />
 		<set name="isDebuff" val="true" />
 		<set name="target" val="ONE"/>
-		<set name="skillType" val="DEBUFF" />
+		<set name="skillType" val="CANCEL" />
 		<set name="operateType" val="ACTIVE"/>
-		<set name="reuseDelay" val="600000"/>
+		<set name="reuseDelay" val="1"/>
 		<set name="hitTime" val="1800"/>
 		<cond>
 			<player hp="75"/>
@@ -950,7 +950,7 @@
 				<mul stat="gainHp" val="0.7"/>
 				<subDiv stat="debuffVuln" val="30" />
 			</effect>
-			<effect name="Cancel" noicon="1" val="0" effectPower="80" effectType="CANCEL" />
+			<effect name="Debuff" time="10" noicon="0" val="0" effectPower="80" effectType="DEBUFF" stackOrder="1" stackType="cancellation" />
 		</for>
 	</skill>
 	<skill id="343" levels="1" name="Lethal Shot" >
