@@ -10,24 +10,26 @@ import net.sf.l2j.gameserver.model.actor.Player;
 public class SpecialModCancelRestore {
 
     public static boolean CANCEL_RESTORE = false;
-    public static int CUSTOM_CANCEL_TASK_DELAY = 10000; // valor padrão: 10 segundos
+    public static int CUSTOM_CANCEL_TASK_DELAY = 10000;
 
     static {
-        try {
+        try (FileInputStream fis = new FileInputStream("config/CustomMods/SpecialMods.ini")) {
             Properties props = new Properties();
-            props.load(new FileInputStream("config/CustomMods/SpecialMods.ini"));
+            props.load(fis);
             CANCEL_RESTORE = Boolean.parseBoolean(props.getProperty("CancelRestore", "false"));
             CUSTOM_CANCEL_TASK_DELAY = Integer.parseInt(props.getProperty("CustomCancelTaskDelay", "10000"));
         } catch (Exception e) {
             System.err.println("Erro ao carregar CancelRestore/CustomCancelTaskDelay do SpecialMods.ini: " + e.getMessage());
         }
 
-        // Print estiloso ao ligar o servidor
-        System.out.println("===============================================");
-        System.out.println("   [SpecialModCancelRestore] Status do Mod:");
-        System.out.println("   CancelRestore.............: " + (CANCEL_RESTORE ? "ATIVADO" : "DESATIVADO"));
-        System.out.println("   CustomCancelTaskDelay.....: " + CUSTOM_CANCEL_TASK_DELAY + " ms");
-        System.out.println("===============================================");
+    }
+
+    public static boolean isCancelRestoreEnabled() {
+        return CANCEL_RESTORE;
+    }
+
+    public static int getCustomCancelTaskDelay() {
+        return CUSTOM_CANCEL_TASK_DELAY;
     }
 
     /**
@@ -51,18 +53,21 @@ public class SpecialModCancelRestore {
             return;
 
         for (L2Skill skill : buffsCanceled) {
-            if (skill == null)
-                continue;
+            try {
+                if (skill == null)
+                    continue;
 
-            // Evita reaplicar se já estiver ativo
-            if (player.getFirstEffect(skill.getId()) != null)
-                continue;
+                // Evita reaplicar se já estiver ativo
+                if (player.getFirstEffect(skill.getId()) != null)
+                    continue;
 
-            skill.getEffects(player, player);
+                skill.getEffects(player, player);
 
-            // Toca um som para o jogador ao restaurar o buff
-            player.sendPacket(new net.sf.l2j.gameserver.network.serverpackets.PlaySound("ItemSound.quest_middle"));
-            //System.out.println("[CancelRestore] Buff restaurado: " + skill.getName() + " para " + player.getName());
+                // Toca um som para o jogador ao restaurar o buff
+                player.sendPacket(new net.sf.l2j.gameserver.network.serverpackets.PlaySound("ItemSound.quest_middle"));
+            } catch (Exception e) {
+                System.err.println("Erro ao restaurar buff: " + (skill != null ? skill.getName() : "null") + " para " + player.getName() + ": " + e.getMessage());
+            }
         }
     }
 }

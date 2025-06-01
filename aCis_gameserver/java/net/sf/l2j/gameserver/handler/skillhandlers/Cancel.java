@@ -2,7 +2,9 @@ package net.sf.l2j.gameserver.handler.skillhandlers;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import net.sf.l2j.commons.random.Rnd;
 
@@ -27,7 +29,8 @@ public class Cancel implements ISkillHandler
 	{
 		SkillType.CANCEL,
 		SkillType.MAGE_BANE,
-		SkillType.WARRIOR_BANE
+		SkillType.WARRIOR_BANE,
+		SkillType.DEBUFF
 	};
 	
 	@Override
@@ -43,6 +46,7 @@ public class Cancel implements ISkillHandler
 		for (WorldObject obj : targets)
 		{
 			if (!(obj instanceof Creature targetCreature))
+				
 				continue;
 			
 			if (targetCreature.isDead())
@@ -50,7 +54,8 @@ public class Cancel implements ISkillHandler
 			
 			//Variavel para modificar o cancelamento de buffs
 				
-			List<L2Skill> cancelledBuffs = new ArrayList<>();
+			//List<L2Skill> cancelledBuffs = new ArrayList<>();
+			Set<L2Skill> cancelledBuffs = new HashSet<>();
 
 			int count = skill.getMaxNegatedEffects();
 			
@@ -66,8 +71,8 @@ public class Cancel implements ISkillHandler
 				if (effect.getSkill().isToggle())
 					continue;
 
-				// Ignora debuffs, exceto Touch of Death (ID 342)
-				if (effect.getSkill().isDebuff() && effect.getSkill().getId() != 342)
+				// Ignora efeitos que são debuffs (não buffs)
+				if (effect.getEffectType() == EffectType.DEBUFF)
 					continue;
 
 				// Don't cancel specific EffectTypes.
@@ -102,11 +107,13 @@ public class Cancel implements ISkillHandler
 					
 					// Só restaura buff se o mod estiver ativo, não for duplicado e não for jogador em Olympiad
 					if (SpecialModCancelRestore.CANCEL_RESTORE
-						&& !cancelledBuffs.contains(effect.getSkill())
-						&& !(creature instanceof Player player && player.isInOlympiadMode()))
+					&& !(creature instanceof Player player && player.isInOlympiadMode()))
 					{
-						cancelledBuffs.add(effect.getSkill());
+					if (cancelledBuffs.add(effect.getSkill())) // add() já retorna false se for duplicado
+						System.out.println("Buff cancelado: " + effect.getSkill().getName() + " (ID: " + effect.getSkill().getId() + ")");
 					}
+					else
+					System.out.println("Buff pos if duplicado cancelado: " + effect.getSkill().getName() + " (ID: " + effect.getSkill().getId() + ")");
 					effect.exit();
 				
 				}
@@ -116,14 +123,16 @@ public class Cancel implements ISkillHandler
 				
 				// If the stack goes to 0, then break the loop.
 				if (count == 0)
-					break;
+				{
+				System.out.println("Limite de buffs cancelados atingido, saindo do loop.");
+				break;
+				}
 			}
 
 			if (!cancelledBuffs.isEmpty() && targetCreature instanceof Player player)
 			{
-				SpecialModCancelRestore.scheduleBuffRestore(player, cancelledBuffs);
+				SpecialModCancelRestore.scheduleBuffRestore(player, List.copyOf(cancelledBuffs));
 				player.sendMessage("Some of your buffs were cancelled, but will be restored in " + (SpecialModCancelRestore.CUSTOM_CANCEL_TASK_DELAY / 1000) + " seconds!");
-    
 			}
 			
 			// If the target is a player, send a message.
@@ -134,6 +143,9 @@ public class Cancel implements ISkillHandler
 				else
 					targetPlayer.sendMessage("Your buffs were cancelled by " + creature.getName() + " using " + skill.getName() + ".");
 			}
+			// Aplica os efeitos normais da skill (ex: debuff)
+			if (targetCreature != null)
+				skill.getEffects(creature, targetCreature);
 		}
 		
 		if (skill.hasSelfEffects())
